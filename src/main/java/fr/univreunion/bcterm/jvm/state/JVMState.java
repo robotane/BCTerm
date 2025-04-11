@@ -74,17 +74,17 @@ public class JVMState {
             if (i > 0)
                 sb.append(", ");
             Value value = localVariables.get(i);
-            sb.append("l").append(i).append("=");
+            // sb.append("l").append(i).append("=");
             sb.append(value != null ? value : "null");
         }
         sb.append("] || ");
 
         // Format operand stack (s)
         sb.append("[");
-        for (int i = 0; i < operandStack.size(); i++) {
-            if (i > 0)
-                sb.append(", ");
-            sb.append("s").append(i).append("=");
+        for (int i = operandStack.size() - 1; i >= 0; i--) {
+            if (i < operandStack.size() - 1)
+                sb.append("::");
+            // sb.append("s").append(i).append("=");
             sb.append(operandStack.get(i));
         }
         sb.append("] || ");
