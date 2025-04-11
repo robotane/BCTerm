@@ -2,6 +2,7 @@ package fr.univreunion.bcterm.jvm.instruction;
 
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.jvm.state.NullValue;
 import fr.univreunion.bcterm.jvm.state.Value;
 
 /**
@@ -12,11 +13,20 @@ public class ConstInstruction extends BytecodeInstruction {
     private final Value value;
 
     /**
-     * Constructs a constant instruction with the given value.
+     * Constructs a constant instruction with the given integer value.
      * 
-     * @param value The value to be pushed onto the operand stack
+     * @param value The integer value to be pushed onto the operand stack
      */
-    public ConstInstruction(Value value) {
+    public ConstInstruction(IntegerValue value) {
+        this.value = value;
+    }
+
+    /**
+     * Constructs a constant instruction with the given null value.
+     * 
+     * @param value The null value to be pushed onto the operand stack
+     */
+    public ConstInstruction(NullValue value) {
         this.value = value;
     }
 
