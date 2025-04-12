@@ -43,6 +43,7 @@ java -jar bcterm.jar <path-to-class-file>
 
 - `src/main/java/fr/univreunion/bcterm/jvm/state/` - Core JVM state representation
 - `src/main/java/fr/univreunion/bcterm/jvm/instruction/ `- Bytecode instruction implementations
+- `src/main/java/fr/univreunion/bcterm/program/` - Program structure representation
 - Additional packages for bytecode parsing, execution, and analysis (TODO)
 
 ## Contributors
