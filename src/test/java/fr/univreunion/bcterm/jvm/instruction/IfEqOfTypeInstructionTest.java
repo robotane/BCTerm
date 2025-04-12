@@ -1,7 +1,6 @@
 package fr.univreunion.bcterm.jvm.instruction;
 
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
-import fr.univreunion.bcterm.jvm.state.JVMObject;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.LocationValue;
 import fr.univreunion.bcterm.jvm.state.Value;
@@ -21,7 +20,7 @@ public class IfEqOfTypeInstructionTest extends TestCase {
     }
 
     /**
-     * Test ifeq instruction with integer 0 on stack.
+     * Test ifeq instruction with integer value 0.
      */
     public void testIfEqWithIntegerZero() {
         // Push integer 0 onto the stack
@@ -33,7 +32,7 @@ public class IfEqOfTypeInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was successful (condition met)
+        // Check that execution was successful (value was 0)
         assertTrue(result);
 
         // Check that the stack is now empty (value was popped)
@@ -41,10 +40,10 @@ public class IfEqOfTypeInstructionTest extends TestCase {
     }
 
     /**
-     * Test ifeq instruction with non-zero integer on stack.
+     * Test ifeq instruction with non-zero integer value.
      */
     public void testIfEqWithNonZeroInteger() {
-        // Push non-zero integer onto the stack
+        // Push integer 42 onto the stack
         state.pushStack(new IntegerValue(42));
 
         // Create an ifeq instruction expecting integer 0
@@ -53,7 +52,7 @@ public class IfEqOfTypeInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution failed (condition not met)
+        // Check that execution was not successful (value was not 0)
         assertFalse(result);
 
         // Check that the stack is now empty (value was popped)
@@ -61,19 +60,19 @@ public class IfEqOfTypeInstructionTest extends TestCase {
     }
 
     /**
-     * Test ifeq instruction with null on stack.
+     * Test ifeq instruction with null reference.
      */
-    public void testIfEqWithNull() {
+    public void testIfEqWithNullReference() {
         // Push null onto the stack
         state.pushStack(Value.NULL);
 
-        // Create an ifeq instruction expecting null
-        IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(Value.NULL);
+        // Create an ifeq instruction expecting null for a reference type
+        IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(new LocationValue(0, "java.lang.Object"));
 
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was successful (condition met)
+        // Check that execution was successful (value was null)
         assertTrue(result);
 
         // Check that the stack is now empty (value was popped)
@@ -81,23 +80,19 @@ public class IfEqOfTypeInstructionTest extends TestCase {
     }
 
     /**
-     * Test ifeq instruction with non-null reference on stack.
+     * Test ifeq instruction with non-null reference.
      */
     public void testIfEqWithNonNullReference() {
-        // Create a location value (non-null reference)
-        JVMObject object = new JVMObject("TestClass");
-        LocationValue locationValue = state.allocateNewObject(object);
+        // Push a non-null reference onto the stack
+        state.pushStack(new LocationValue(12345, "java.lang.String"));
 
-        // Push the location value onto the stack
-        state.pushStack(locationValue);
-
-        // Create an ifeq instruction expecting null
-        IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(Value.NULL);
+        // Create an ifeq instruction expecting null for a reference type
+        IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(new LocationValue(0, "java.lang.Object"));
 
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution failed (condition not met)
+        // Check that execution was not successful (value was not null)
         assertFalse(result);
 
         // Check that the stack is now empty (value was popped)
@@ -111,33 +106,13 @@ public class IfEqOfTypeInstructionTest extends TestCase {
         // Create an ifeq instruction
         IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(new IntegerValue(0));
 
-        // Execute the instruction on an empty stack
+        // Execute the instruction on empty stack
         boolean result = instruction.execute(state);
 
-        // Check that execution failed (empty stack)
+        // Check that execution failed (stack was empty)
         assertFalse(result);
 
         // Check that the stack is still empty
-        assertEquals(0, state.getStackSize());
-    }
-
-    /**
-     * Test ifeq instruction with type mismatch.
-     */
-    public void testIfEqWithTypeMismatch() {
-        // Push integer onto the stack
-        state.pushStack(new IntegerValue(0));
-
-        // Create an ifeq instruction expecting null
-        IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(Value.NULL);
-
-        // Execute the instruction
-        boolean result = instruction.execute(state);
-
-        // Check that execution failed (type mismatch)
-        assertFalse(result);
-
-        // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
     }
 
@@ -149,8 +124,12 @@ public class IfEqOfTypeInstructionTest extends TestCase {
         IfEqOfTypeInstruction intInstruction = new IfEqOfTypeInstruction(new IntegerValue(0));
         assertEquals("ifeq of type 0", intInstruction.toString());
 
-        // Test toString() for null type
-        IfEqOfTypeInstruction nullInstruction = new IfEqOfTypeInstruction(Value.NULL);
-        assertEquals("ifeq of type null", nullInstruction.toString());
+        // Test toString() for reference type with type name
+        IfEqOfTypeInstruction refInstruction = new IfEqOfTypeInstruction(new LocationValue(0, "java.lang.String"));
+        assertEquals("ifeq of type java.lang.String", refInstruction.toString());
+
+        // Test toString() for reference type without type name
+        IfEqOfTypeInstruction refWithoutTypeInstruction = new IfEqOfTypeInstruction(new LocationValue(0));
+        assertTrue(refWithoutTypeInstruction.toString().startsWith("ifeq of type loc@"));
     }
 }

@@ -27,4 +27,9 @@ public class StoreInstruction extends BytecodeInstruction {
         return false;
     }
 
+    @Override
+    public String toString() {
+        return "store " + index;
+    }
+
 }

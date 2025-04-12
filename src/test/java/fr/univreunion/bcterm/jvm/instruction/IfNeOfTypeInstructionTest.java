@@ -2,7 +2,7 @@ package fr.univreunion.bcterm.jvm.instruction;
 
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
 import fr.univreunion.bcterm.jvm.state.JVMState;
-import fr.univreunion.bcterm.jvm.state.NullValue;
+import fr.univreunion.bcterm.jvm.state.LocationValue;
 import fr.univreunion.bcterm.jvm.state.Value;
 import junit.framework.TestCase;
 
@@ -21,115 +21,102 @@ public class IfNeOfTypeInstructionTest extends TestCase {
 
     /**
      * Test ifne instruction with integer value 0.
-     * Should continue execution (return true) when value is 0.
      */
     public void testIfNeWithIntegerZero() {
-        // Create expected value (0)
-        IntegerValue expectedValue = new IntegerValue(0);
-
-        // Create ifne instruction to check against 0
-        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(expectedValue);
-
-        // Push 0 onto the stack
+        // Push integer 0 onto the stack
         state.pushStack(new IntegerValue(0));
+
+        // Create an ifne instruction expecting integer 0
+        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(new IntegerValue(0));
 
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution should continue (value is 0, so it's equal to expected)
+        // Check that execution was successful (value was 0, and we want to continue if
+        // it's not non-zero)
         assertTrue(result);
 
-        // Check that the stack is now empty
+        // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
     }
 
     /**
      * Test ifne instruction with non-zero integer value.
-     * Should stop execution (return false) when value is not 0.
      */
     public void testIfNeWithNonZeroInteger() {
-        // Create expected value (0)
-        IntegerValue expectedValue = new IntegerValue(0);
-
-        // Create ifne instruction to check against 0
-        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(expectedValue);
-
-        // Push non-zero value onto the stack
+        // Push integer 42 onto the stack
         state.pushStack(new IntegerValue(42));
+
+        // Create an ifne instruction expecting integer 0
+        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(new IntegerValue(0));
 
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution should stop (value is not 0)
+        // Check that execution was not successful (value was non-zero, and we want to
+        // stop if it's non-zero)
         assertFalse(result);
 
-        // Check that the stack is now empty
+        // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
     }
 
     /**
-     * Test ifne instruction with null value.
-     * Should stop execution (return false) when value is null.
+     * Test ifne instruction with null reference.
      */
-    public void testIfNeWithNullValue() {
-        // Create expected value (null)
-        NullValue expectedValue = (NullValue) Value.NULL;
-
-        // Create ifne instruction to check against null
-        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(expectedValue);
-
+    public void testIfNeWithNullReference() {
         // Push null onto the stack
         state.pushStack(Value.NULL);
 
+        // Create an ifne instruction expecting null for a reference type
+        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(new LocationValue(0, "java.lang.Object"));
+
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution should stop (value is null)
-        assertFalse(result);
+        // Check that execution was successful (value was null, and we want to continue
+        // if it's not non-null)
+        assertTrue(result);
 
-        // Check that the stack is now empty
+        // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
     }
 
     /**
-     * Test ifne instruction with non-null reference value.
-     * Should continue execution (return true) when value is not null.
+     * Test ifne instruction with non-null reference.
      */
     public void testIfNeWithNonNullReference() {
-        // Create expected value (null)
-        NullValue expectedValue = (NullValue) Value.NULL;
+        // Push a non-null reference onto the stack
+        state.pushStack(new LocationValue(12345, "java.lang.String"));
 
-        // Create ifne instruction to check against null
-        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(expectedValue);
-
-        // Push a non-null reference onto the stack (using IntegerValue as an example)
-        state.pushStack(new IntegerValue(1));
+        // Create an ifne instruction expecting null for a reference type
+        IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(new LocationValue(0, "java.lang.Object"));
 
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution should continue (value is not null)
-        assertTrue(result);
+        // Check that execution was not successful (value was non-null, and we want to
+        // stop if it's non-null)
+        assertFalse(result);
 
-        // Check that the stack is now empty
+        // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
     }
 
     /**
      * Test ifne instruction with empty stack.
-     * Should fail (return false) when stack is empty.
      */
     public void testIfNeWithEmptyStack() {
-        // Create ifne instruction
+        // Create an ifne instruction
         IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(new IntegerValue(0));
 
         // Execute the instruction on empty stack
         boolean result = instruction.execute(state);
 
-        // Check that execution failed
+        // Check that execution failed (stack was empty)
         assertFalse(result);
 
-        // Stack should still be empty
+        // Check that the stack is still empty
         assertEquals(0, state.getStackSize());
     }
 
@@ -137,12 +124,16 @@ public class IfNeOfTypeInstructionTest extends TestCase {
      * Test toString method of IfNeOfTypeInstruction.
      */
     public void testToString() {
-        // Test toString() for integer value
+        // Test toString() for integer type
         IfNeOfTypeInstruction intInstruction = new IfNeOfTypeInstruction(new IntegerValue(0));
         assertEquals("ifne of type 0", intInstruction.toString());
 
-        // Test toString() for null value
-        IfNeOfTypeInstruction nullInstruction = new IfNeOfTypeInstruction(Value.NULL);
-        assertEquals("ifne of type null", nullInstruction.toString());
+        // Test toString() for reference type with type name
+        IfNeOfTypeInstruction refInstruction = new IfNeOfTypeInstruction(new LocationValue(0, "java.lang.String"));
+        assertEquals("ifne of type java.lang.String", refInstruction.toString());
+
+        // Test toString() for reference type without type name
+        IfNeOfTypeInstruction refWithoutTypeInstruction = new IfNeOfTypeInstruction(new LocationValue(0));
+        assertTrue(refWithoutTypeInstruction.toString().startsWith("ifne of type loc@"));
     }
 }

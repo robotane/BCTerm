@@ -5,6 +5,10 @@ package fr.univreunion.bcterm.jvm.state;
  */
 public interface Value {
 
+    /**
+     * A constant representing a null value in the JVM state
+     */
+
     Value NULL = new NullValue();
 
     /**

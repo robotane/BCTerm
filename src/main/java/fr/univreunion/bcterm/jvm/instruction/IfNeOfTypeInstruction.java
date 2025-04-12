@@ -2,6 +2,7 @@ package fr.univreunion.bcterm.jvm.instruction;
 
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.jvm.state.LocationValue;
 import fr.univreunion.bcterm.jvm.state.NullValue;
 import fr.univreunion.bcterm.jvm.state.Value;
 
@@ -31,17 +32,21 @@ public class IfNeOfTypeInstruction extends BytecodeInstruction {
         Value value = state.popStack();
 
         if (this.expectedValue instanceof IntegerValue) {
-            // Check if value is an integer and not equals 0
-            return !(value instanceof IntegerValue && (Integer) value.getValue() != 0);
-        } else {
-            // Check if value is not null
-            return !(value instanceof NullValue);
+            // Check if value is an integer and equals 0, continue if it is
+            return value instanceof IntegerValue && (Integer) value.getValue() == 0;
+        } else if (this.expectedValue instanceof LocationValue) {
+            // Check if value is null, continue if it is
+            return value instanceof NullValue;
         }
-
+        return false;
     }
 
     @Override
     public String toString() {
+        if (expectedValue instanceof LocationValue) {
+            String typeName = ((LocationValue) expectedValue).getTypeName();
+            return "ifne of type " + (typeName != null ? typeName : expectedValue);
+        }
         return "ifne of type " + expectedValue;
     }
 

@@ -2,6 +2,7 @@ package fr.univreunion.bcterm.jvm.instruction;
 
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.jvm.state.LocationValue;
 import fr.univreunion.bcterm.jvm.state.NullValue;
 import fr.univreunion.bcterm.jvm.state.Value;
 
@@ -14,7 +15,8 @@ public class IfEqOfTypeInstruction extends BytecodeInstruction {
     private final Value expectedValue;
 
     /**
-     * Constructs an ifeq instruction with the expected value to compare against.
+     * Constructs an ifeq of type instruction with the expected value to compare
+     * against.
      * 
      * @param expectedValue The value to compare against (0 for int, null for
      *                      reference types)
@@ -33,14 +35,19 @@ public class IfEqOfTypeInstruction extends BytecodeInstruction {
         if (this.expectedValue instanceof IntegerValue) {
             // Check if value is an integer and equals 0
             return value instanceof IntegerValue && ((IntegerValue) value).getValue() == 0;
-        } else {
+        } else if (this.expectedValue instanceof LocationValue) {
             // Check if value is null
             return value instanceof NullValue;
         }
+        return false;
     }
 
     @Override
     public String toString() {
+        if (expectedValue instanceof LocationValue) {
+            String typeName = ((LocationValue) expectedValue).getTypeName();
+            return "ifeq of type " + (typeName != null ? typeName : expectedValue);
+        }
         return "ifeq of type " + expectedValue;
     }
 
