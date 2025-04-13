@@ -100,5 +100,8 @@ public class SharingProgramExample {
     public static void main(String[] args) {
         Program programme = createSharingProgram();
         System.out.println(programme);
+
+        programme.getMethod("expand").saveToFile();
+        programme.saveToFile();
     }
 }

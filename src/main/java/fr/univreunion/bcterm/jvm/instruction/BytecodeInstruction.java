@@ -33,4 +33,8 @@ public abstract class BytecodeInstruction {
     public void setLabel(String label) {
         this.label = label;
     }
+
+    public String getLabelFor(String labelKey) {
+        return label == null ? "" : label;
+    }
 }

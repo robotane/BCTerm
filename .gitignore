@@ -36,3 +36,9 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Generated files ###
+*.dot
+*.pdf
+*.png
+*.svg

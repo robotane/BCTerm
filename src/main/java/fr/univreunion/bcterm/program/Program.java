@@ -1,5 +1,8 @@
 package fr.univreunion.bcterm.program;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -99,11 +102,25 @@ public class Program {
         }
     }
 
+    /**
+     * Adds a method to the program with a specified name, signature, and control
+     * flow graph.
+     *
+     * @param methodName the name of the method to be added
+     * @param signature  the method's signature
+     * @param methodCFG  the control flow graph representing the method's structure
+     */
     public final void addMethod(String methodName, String signature, CFG methodCFG) {
         Method method = new Method(methodName, signature, methodCFG, this);
         this.addMethod(method);
     }
 
+    /**
+     * Adds a method to the program with a specified name and control flow graph.
+     *
+     * @param methodName the name of the method to be added
+     * @param methodCFG  the control flow graph representing the method's structure
+     */
     public final void addMethod(String methodName, CFG methodCFG) {
         Method method = new Method(methodName, methodCFG, this);
         this.addMethod(method);
@@ -136,4 +153,81 @@ public class Program {
 
         return sb.toString();
     }
+
+    /**
+     * Converts the program to a DOT graph representation.
+     *
+     * @param labelKey a key used for labeling nodes in the graph
+     * @return a string containing the DOT graph description of the program
+     */
+    public String toDOT(String labelKey) {
+        StringBuilder dot = new StringBuilder();
+        dot.append("digraph Program {\n");
+        dot.append("  label=\"").append(this.name).append("\"\n");
+
+        // Add the global graph attributes
+        dot.append("  node [shape=box fontname=\"monospace\"];\n");
+        dot.append("  edge [color=blue];\n");
+
+        // Create a subgraph for each method
+        int methodIndex = 0;
+        for (Method methode : this.methods.values()) {
+            dot.append(methode.toDOT(methodIndex++, labelKey));
+        }
+
+        dot.append("}\n");
+        return dot.toString();
+    }
+
+    /**
+     * Saves the program's DOT graph representation to a file.
+     *
+     * @param labelKey  the key used for labeling nodes in the graph
+     * @param extension the file extension for the output graph image (e.g., "png",
+     *                  "svg", pdf", etc.)
+     */
+    public void saveToFile(String labelKey, String extension) {
+        String dot = toDOT(labelKey);
+        String filename = this.name;
+        try {
+            // Write DOT content to temporary file
+            File dotFile = new File(filename + ".dot");
+            File outputFile = new File(filename + "." + extension);
+            try (FileWriter writer = new FileWriter(dotFile)) {
+                writer.write(dot);
+                System.out.println("Generated " + dotFile + " successfully.");
+            } catch (IOException e) {
+                System.err.println("Error generating dot file: " + e.getMessage());
+            }
+
+            // Generate output using dot command
+            ProcessBuilder pb = new ProcessBuilder("dot", "-T" + extension, dotFile.getAbsolutePath(), "-o",
+                    outputFile.getAbsolutePath());
+            Process process = pb.start();
+            process.waitFor();
+
+            System.out.println("Generated " + outputFile + " successfully.");
+
+        } catch (IOException | InterruptedException e) {
+            System.err.println("Error generating image. Make sure GraphViz is installed.\n" + e.getMessage());
+        }
+    }
+
+    /**
+     * Saves the program's DOT graph representation to a file as a PNG image.
+     *
+     * @param labelKey the key used for labeling nodes in the graph
+     */
+    public void saveToFile(String labelKey) {
+        saveToFile(labelKey, "png");
+    }
+
+    /**
+     * Saves the program's DOT graph representation to a file as a PNG image with an
+     * empty label key.
+     */
+    public void saveToFile() {
+        saveToFile("");
+    }
+
 }

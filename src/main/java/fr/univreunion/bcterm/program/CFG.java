@@ -64,4 +64,74 @@ public class CFG {
         return sb.toString();
     }
 
+    /**
+     * Generates a trimmed DOT (graph description language) representation of the
+     * Control Flow Graph.
+     * 
+     * @param labelKey the key used to retrieve labels for bytecode instructions
+     * @return a DOT-formatted string representing the Control Flow Graph with
+     *         aligned instructions and labels
+     */
+    public String toTrimedDOT(String labelKey) {
+        StringBuilder dot = new StringBuilder();
+
+        // Set default node and edge attributes
+        dot.append("  node [shape=box fontname=\"monospace\"];\n");
+        dot.append("  edge [color=blue];\n");
+
+        // Add nodes
+        for (BasicBlock block : blocks) {
+            dot.append("  block").append(block.getId())
+                    .append(" [label=\"");
+
+            // Determine maximum instruction length for this block
+            int maxInstrLength = 0;
+            for (BytecodeInstruction instr : block.getInstructions()) {
+                int length = instr.toString().replace("\"", "\\\"").length();
+                if (length > maxInstrLength) {
+                    maxInstrLength = length;
+                }
+            }
+
+            maxInstrLength += 3; // Add some padding
+
+            // Add instructions to node label with labels aligned consistently
+            for (BytecodeInstruction instr : block.getInstructions()) {
+                String instrStr = instr.toString().replace("\"", "\\\"");
+                String label = instr.getLabelFor(labelKey);
+
+                // Use %-s format for left alignment with consistent spacing
+                String paddedInstr = String.format("%-" + maxInstrLength + "s %s\\l", instrStr, label);
+                dot.append(paddedInstr);
+            }
+            dot.append("\"];\n");
+        }
+
+        // Add edges
+        for (Map.Entry<BasicBlock, Set<BasicBlock>> entry : edges.entrySet()) {
+            BasicBlock from = entry.getKey();
+            for (BasicBlock to : entry.getValue()) {
+                dot.append("  block").append(from.getId())
+                        .append(" -> block").append(to.getId()).append(";\n");
+            }
+        }
+
+        return dot.toString();
+    }
+
+    /**
+     * Generates a complete DOT graph representation of the Control Flow Graph.
+     *
+     * @param labelKey the key used to retrieve labels for bytecode instructions
+     * @return a complete DOT-formatted string representing the entire Control Flow
+     *         Graph
+     */
+    public String toDOT(String labelKey) {
+        StringBuilder dot = new StringBuilder();
+        dot.append("digraph {\n");
+        dot.append(toTrimedDOT(labelKey));
+        dot.append("}\n");
+        return dot.toString();
+    }
+
 }
