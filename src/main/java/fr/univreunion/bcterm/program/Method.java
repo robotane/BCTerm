@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
+import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
+import fr.univreunion.bcterm.jvm.state.JVMState;
 
 /**
  * Represents a method in a program with its control flow graph and associated
@@ -62,14 +64,14 @@ public class Method {
 
     /**
      * Constructs a Method with a default void signature.
-     * Delegates to the full constructor with a default "(void):void" signature.
+     * Delegates to the full constructor with a default "():void" signature.
      *
      * @param name    The name of the method
      * @param cfg     The control flow graph representing the method's structure
      * @param program The program containing this method
      */
     public Method(String name, CFG cfg, Program program) {
-        this(name, "(void):void", cfg, program);
+        this(name, "():void", cfg, program);
     }
 
     public String getName() {
@@ -94,6 +96,112 @@ public class Method {
 
     public void setProgram(Program program) {
         this.program = program;
+    }
+
+    public Set<JVMState> execute(JVMState initialState) {
+        // Method execution ...
+        System.out.println("\nExecuting method " + name);
+        System.out.println("---------------------------------");
+
+        // Start with the first block of the method
+        BasicBlock startBlock = cfg.getBlocks().get(0);
+
+        // Set to store final states
+        Set<JVMState> finalStates = new HashSet<>();
+
+        // Set to track blocks already visited in current path
+        Set<BasicBlock> visitedInPath = new HashSet<>();
+
+        // Execute recursively from the start block
+        executeRecursive(startBlock, new JVMState(initialState), finalStates, visitedInPath);
+
+        System.out.println("\nMethod " + name + " execution completed");
+        System.out.println("Found " + finalStates.size() + " final states");
+        System.out.println("---------------------------------");
+
+        return finalStates;
+    }
+
+    private void executeRecursive(BasicBlock currentBlock, JVMState currentState,
+            Set<JVMState> finalStates, Set<BasicBlock> visitedInPath) {
+        // Check if we are in a cycle
+        if (visitedInPath.contains(currentBlock)) {
+            System.out.println("Cycle detected at block " + currentBlock.getId() + " in method " + name);
+            // We can choose to add the current state as final state or not
+            finalStates.add(new JVMState(currentState));
+            return;
+        }
+
+        // Mark the block as visited in the current path
+        visitedInPath.add(currentBlock);
+
+        System.out.println("Executing block " + currentBlock.getId() + " in method " + name);
+
+        // Execute instructions of the current block
+        JVMState stateAfterBlock = executeBlock(currentBlock, new JVMState(currentState));
+
+        // If execution failed, stop this path
+        if (stateAfterBlock == null) {
+            System.out.println("Execution of block " + currentBlock.getId() + " failed in method " + name);
+            visitedInPath.remove(currentBlock);
+            return;
+        }
+
+        // Get successors of the current block
+        Set<BasicBlock> nextBlocks = getBlockSuccessors(currentBlock);
+
+        // If no successors, add current state as final state
+        if (nextBlocks.isEmpty()) {
+            System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
+            finalStates.add(stateAfterBlock);
+        } else {
+            // Execute recursively for each successor
+            for (BasicBlock nextBlock : nextBlocks) {
+                System.out.println("Following path from block " + currentBlock.getId() +
+                        " to block " + nextBlock.getId() + " in method " + name);
+                executeRecursive(nextBlock, stateAfterBlock, finalStates,
+                        new HashSet<>(visitedInPath));
+            }
+        }
+
+        // Remove the block from visited path before going back up
+        visitedInPath.remove(currentBlock);
+    }
+
+    private JVMState executeBlock(BasicBlock block, JVMState state) {
+        if (block == null || state == null) {
+            return null;
+        }
+
+        // System.out.println(state.toDetailedString());
+
+        List<BytecodeInstruction> instructions = block.getInstructions();
+
+        // Execute each instruction in the block
+        for (BytecodeInstruction instruction : instructions) {
+            instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
+            instruction.addAnalysisResult("stackSize", state.getStackSize());
+
+            // Display the state before execution with sharing and cyclicity information
+            System.out.println(
+                    "  " + instruction + (instruction.getLabel() != null ? " [" + instruction.getLabel() + "]" : ""));
+
+            // If the instruction is a CallInstruction, provide a reference to the program
+            if (instruction instanceof CallInstruction) {
+                ((CallInstruction) instruction).setProgram(program);
+            }
+
+            boolean result = instruction.execute(state); // Execute the instruction
+
+            // If execution failed, stop block execution
+            if (!result) {
+                System.out.println("  Instruction execution failed");
+                // System.out.println(state.toDetailedString());
+                return null;
+            }
+        }
+
+        return state;
     }
 
     @Override

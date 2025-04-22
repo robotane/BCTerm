@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.jvm.state.JVMState;
+
 /**
  * Represents a program containing a collection of methods with a designated
  * main method.
@@ -138,6 +140,18 @@ public class Program {
             throw new IllegalArgumentException("Method " + methodName + " does not exist in this program");
         }
         this.mainMethodName = methodName;
+    }
+
+    public Set<JVMState> execute(String methodName, JVMState initialState) {
+        if (!methods.containsKey(methodName)) {
+            throw new IllegalArgumentException("Method " + methodName + " does not exist in this program");
+        }
+
+        return methods.get(methodName).execute(initialState);
+    }
+
+    public Set<JVMState> execute(JVMState initialState) {
+        return execute(mainMethodName, initialState);
     }
 
     @Override

@@ -99,7 +99,6 @@ public class CFG {
             for (BytecodeInstruction instr : block.getInstructions()) {
                 String instrStr = instr.toString().replace("\"", "\\\"");
                 String label = instr.getLabelFor(labelKey);
-
                 // Use %-s format for left alignment with consistent spacing
                 String paddedInstr = String.format("%-" + maxInstrLength + "s %s\\l", instrStr, label);
                 dot.append(paddedInstr);

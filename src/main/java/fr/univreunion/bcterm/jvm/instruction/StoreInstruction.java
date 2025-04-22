@@ -17,7 +17,7 @@ public class StoreInstruction extends BytecodeInstruction {
     @Override
     public boolean execute(JVMState state) {
         if (state.getStackSize() > 0) {
-            if (index < 0 || index >= state.getLocalVariablesSize()) {
+            if (index < 0) {
                 return false; // Invalid index
             }
             Value value = state.popStack();

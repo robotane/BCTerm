@@ -26,17 +26,16 @@ public class IfNeOfTypeInstruction extends BytecodeInstruction {
 
     @Override
     public boolean execute(JVMState state) {
-        if (state.getStackSize() <= 0)
-            return false;
+        if (state.getStackSize() > 0) {
+            Value value = state.popStack();
 
-        Value value = state.popStack();
-
-        if (this.expectedValue instanceof IntegerValue) {
-            // Check if value is an integer and equals 0, continue if it is
-            return value instanceof IntegerValue && (Integer) value.getValue() == 0;
-        } else if (this.expectedValue instanceof LocationValue) {
-            // Check if value is null, continue if it is
-            return value instanceof NullValue;
+            if (this.expectedValue instanceof IntegerValue) {
+                // Check if value is an integer and not equals 0
+                return !(value instanceof IntegerValue && (Integer) value.getValue() != 0);
+            } else {
+                // Check if value is not null
+                return !(value instanceof NullValue);
+            }
         }
         return false;
     }

@@ -27,17 +27,16 @@ public class IfEqOfTypeInstruction extends BytecodeInstruction {
 
     @Override
     public boolean execute(JVMState state) {
-        if (state.getStackSize() <= 0)
-            return false;
+        if (state.getStackSize() > 0) {
+            Value value = state.popStack();
 
-        Value value = state.popStack();
-
-        if (this.expectedValue instanceof IntegerValue) {
-            // Check if value is an integer and equals 0
-            return value instanceof IntegerValue && ((IntegerValue) value).getValue() == 0;
-        } else if (this.expectedValue instanceof LocationValue) {
-            // Check if value is null
-            return value instanceof NullValue;
+            if (this.expectedValue instanceof IntegerValue) {
+                // Check if value is an integer and equals 0
+                return value instanceof IntegerValue && ((IntegerValue) value).getValue() == 0;
+            } else {
+                // Check if value is null
+                return value instanceof NullValue;
+            }
         }
         return false;
     }
