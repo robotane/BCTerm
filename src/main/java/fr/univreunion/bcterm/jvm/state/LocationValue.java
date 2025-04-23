@@ -66,11 +66,6 @@ public class LocationValue implements Value {
     }
 
     @Override
-    public ValueType getType() {
-        return ValueType.LOCATION;
-    }
-
-    @Override
     public LocationValue getValue() {
         return this;
     }

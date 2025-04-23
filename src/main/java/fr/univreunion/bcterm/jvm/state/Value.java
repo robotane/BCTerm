@@ -12,13 +12,6 @@ public interface Value {
     Value NULL = new NullValue();
 
     /**
-     * Returns the type of this value
-     * 
-     * @return the type of this value
-     */
-    ValueType getType();
-
-    /**
      * Returns Java object representing this value
      * 
      * @return the Java object representing this value

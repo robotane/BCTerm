@@ -17,11 +17,6 @@ public class IntegerValue implements Value {
     }
 
     @Override
-    public ValueType getType() {
-        return ValueType.INTEGER;
-    }
-
-    @Override
     public Integer getValue() {
         return value;
     }
