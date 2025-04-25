@@ -220,6 +220,6 @@ public class SharingProgramExample {
         }
 
         program.getMethod("expand").saveToFile();
-        program.saveToFile();
+        program.saveToFile("sharingPairs");
     }
 }

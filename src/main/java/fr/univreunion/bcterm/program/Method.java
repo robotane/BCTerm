@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.sharing.SharingPair;
+import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.state.JVMState;
@@ -103,16 +105,12 @@ public class Method {
         System.out.println("\nExecuting method " + name);
         System.out.println("---------------------------------");
 
-        // Start with the first block of the method
         BasicBlock startBlock = cfg.getBlocks().get(0);
 
-        // Set to store final states
         Set<JVMState> finalStates = new HashSet<>();
 
-        // Set to track blocks already visited in current path
         Set<BasicBlock> visitedInPath = new HashSet<>();
 
-        // Execute recursively from the start block
         executeRecursive(startBlock, new JVMState(initialState), finalStates, visitedInPath);
 
         System.out.println("\nMethod " + name + " execution completed");
@@ -124,20 +122,16 @@ public class Method {
 
     private void executeRecursive(BasicBlock currentBlock, JVMState currentState,
             Set<JVMState> finalStates, Set<BasicBlock> visitedInPath) {
-        // Check if we are in a cycle
         if (visitedInPath.contains(currentBlock)) {
             System.out.println("Cycle detected at block " + currentBlock.getId() + " in method " + name);
-            // We can choose to add the current state as final state or not
             finalStates.add(new JVMState(currentState));
             return;
         }
 
-        // Mark the block as visited in the current path
         visitedInPath.add(currentBlock);
 
         System.out.println("Executing block " + currentBlock.getId() + " in method " + name);
 
-        // Execute instructions of the current block
         JVMState stateAfterBlock = executeBlock(currentBlock, new JVMState(currentState));
 
         // If execution failed, stop this path
@@ -147,7 +141,6 @@ public class Method {
             return;
         }
 
-        // Get successors of the current block
         Set<BasicBlock> nextBlocks = getBlockSuccessors(currentBlock);
 
         // If no successors, add current state as final state
@@ -173,18 +166,29 @@ public class Method {
             return null;
         }
 
-        // System.out.println(state.toDetailedString());
-
         List<BytecodeInstruction> instructions = block.getInstructions();
+        if (instructions == null) {
+            return null;
+        }
 
-        // Execute each instruction in the block
         for (BytecodeInstruction instruction : instructions) {
-            instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
-            instruction.addAnalysisResult("stackSize", state.getStackSize());
+            if (instruction == null) {
+                continue;
+            }
 
-            // Display the state before execution with sharing and cyclicity information
-            System.out.println(
-                    "  " + instruction + (instruction.getLabel() != null ? " [" + instruction.getLabel() + "]" : ""));
+            if (this.name.equals("expand")) {
+                // Execute shared variables analysis
+                Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
+
+                // Add analysis results to the instruction
+                instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
+                instruction.addAnalysisResult("stackSize", state.getStackSize());
+                instruction.addAnalysisResult("sharingPairs", sharingPairs);
+
+                String instructionLabel = instruction.getLabel();
+                System.out.println(
+                        "  " + instruction + (instructionLabel != null ? " [" + instructionLabel + "]" : ""));
+            }
 
             // If the instruction is a CallInstruction, provide a reference to the program
             if (instruction instanceof CallInstruction) {
@@ -269,7 +273,7 @@ public class Method {
         }
 
         // Get the trimmed DOT representation of the CFG
-        String cfgDot = cfg.toTrimedDOT(labelKey);
+        String cfgDot = cfg.toTrimmedDOT(labelKey);
         String[] lines = cfgDot.split("\n");
         for (String line : lines) {
             String modifiedLine = line.replaceAll("block(\\d+)", cleanedMethodName + "_block$1");

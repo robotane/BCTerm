@@ -212,6 +212,22 @@ public class JVMState {
     }
 
     /**
+     * Retrieves the fields of a JVM object at the specified memory address.
+     * 
+     * @param address The memory address of the object
+     * @return A map of field names to their corresponding values, or an empty map
+     *         if the object is not found
+     */
+    public Map<String, Value> getObjectFields(long address) {
+        LocationValue locationValue = new LocationValue(address);
+        JVMObject object = memory.get(locationValue);
+        if (object != null) {
+            return object.getFields();
+        }
+        return new HashMap<>();
+    }
+
+    /**
      * Allocates an object in memory at the specified location.
      * 
      * @param LocationValue The location value where to store the object
