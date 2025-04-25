@@ -10,6 +10,11 @@ import fr.univreunion.bcterm.jvm.state.Value;
 public class StoreInstruction extends BytecodeInstruction {
     private final int index;
 
+    /**
+     * Constructs a StoreInstruction with the specified local variable index.
+     *
+     * @param index the index of the local variable where the value will be stored
+     */
     public StoreInstruction(int index) {
         this.index = index;
     }

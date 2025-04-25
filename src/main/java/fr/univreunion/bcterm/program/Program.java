@@ -185,8 +185,8 @@ public class Program {
 
         // Create a subgraph for each method
         int methodIndex = 0;
-        for (Method methode : this.methods.values()) {
-            dot.append(methode.toDOT(methodIndex++, labelKey));
+        for (Method method : this.methods.values()) {
+            dot.append(method.toDOT(methodIndex++, labelKey));
         }
 
         dot.append("}\n");

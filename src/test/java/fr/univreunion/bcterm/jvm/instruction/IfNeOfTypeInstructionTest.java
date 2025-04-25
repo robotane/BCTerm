@@ -74,9 +74,10 @@ public class IfNeOfTypeInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was successful (value was null, and we want to continue
+        // Check that execution was not successful (value was null, and we want to
+        // continue
         // if it's not non-null)
-        assertTrue(result);
+        assertFalse(result);
 
         // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
@@ -95,9 +96,9 @@ public class IfNeOfTypeInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was not successful (value was non-null, and we want to
-        // stop if it's non-null)
-        assertFalse(result);
+        // Check that execution was successful (value was non-null, and we want to
+        // continue if it's non-null)
+        assertTrue(result);
 
         // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());

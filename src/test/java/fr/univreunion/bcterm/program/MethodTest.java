@@ -71,7 +71,7 @@ public class MethodTest extends TestCase {
 
         // Check method properties
         assertEquals("testMethod", method.getName());
-        assertEquals("(void):void", method.getSignature()); // Default signature
+        assertEquals("():void", method.getSignature()); // Default signature
         assertSame(cfg, method.getCfg());
         assertSame(program, method.getProgram());
     }

@@ -33,10 +33,7 @@ public class CFG {
      * @param to   the destination basic block
      */
     public void addEdge(BasicBlock from, BasicBlock to) {
-        if (!edges.containsKey(from)) {
-            edges.put(from, new HashSet<>());
-        }
-        edges.get(from).add(to);
+        edges.computeIfAbsent(from, k -> new HashSet<>()).add(to);
     }
 
     public List<BasicBlock> getBlocks() {
@@ -72,7 +69,7 @@ public class CFG {
      * @return a DOT-formatted string representing the Control Flow Graph with
      *         aligned instructions and labels
      */
-    public String toTrimedDOT(String labelKey) {
+    public String toTrimmedDOT(String labelKey) {
         StringBuilder dot = new StringBuilder();
 
         // Set default node and edge attributes
@@ -128,7 +125,7 @@ public class CFG {
     public String toDOT(String labelKey) {
         StringBuilder dot = new StringBuilder();
         dot.append("digraph {\n");
-        dot.append(toTrimedDOT(labelKey));
+        dot.append(toTrimmedDOT(labelKey));
         dot.append("}\n");
         return dot.toString();
     }

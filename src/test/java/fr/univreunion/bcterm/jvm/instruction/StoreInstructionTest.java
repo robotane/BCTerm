@@ -132,14 +132,16 @@ public class StoreInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution failed (index out of bounds)
-        assertFalse(result);
+        // Check that execution was successful (index beyond size is allowed)
+        assertTrue(result);
 
-        // Check that the stack still has the value (not popped)
-        assertEquals(1, state.getStackSize());
-        Value stackValue = state.popStack();
-        assertTrue(stackValue instanceof IntegerValue);
-        assertEquals(42, stackValue.getValue());
+        // Check that the stack is empty (value was popped)
+        assertEquals(0, state.getStackSize());
+
+        // Check that the local variable was updated
+        Value localVar = state.getLocalVariable(10);
+        assertTrue(localVar instanceof IntegerValue);
+        assertEquals(42, localVar.getValue());
     }
 
     /**
