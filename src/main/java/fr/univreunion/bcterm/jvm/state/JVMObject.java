@@ -64,9 +64,9 @@ public class JVMObject {
     }
 
     /**
-     * Gets all field values in this object
+     * Gets all field names in this object
      * 
-     * @return Collection of all field values
+     * @return Collection of all field names
      */
     public Collection<String> getFieldNames() {
         return fields.keySet();
@@ -98,4 +98,22 @@ public class JVMObject {
         return sb.toString();
     }
 
+    /**
+     * Creates and returns a deep copy of this JVMObject.
+     * 
+     * @return A new JVMObject that is a deep copy of this object
+     */
+    public JVMObject deepCopy() {
+        JVMObject copy = new JVMObject(this.classTag);
+
+        for (Map.Entry<String, Value> entry : fields.entrySet()) {
+            String fieldName = entry.getKey();
+            Value fieldValue = entry.getValue();
+
+            Value copiedValue = fieldValue != null ? fieldValue.deepCopy() : Value.NULL;
+            copy.setField(fieldName, copiedValue);
+        }
+
+        return copy;
+    }
 }

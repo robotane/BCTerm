@@ -92,4 +92,12 @@ public class LocationValue implements Value {
         return Long.hashCode(address);
     }
 
+    @Override
+    public Value deepCopy() {
+        LocationValue copy = new LocationValue(this.address);
+        if (this.typeName != null) {
+            copy.setTypeName(this.typeName);
+        }
+        return copy;
+    }
 }

@@ -124,7 +124,7 @@ public class Method {
             Set<JVMState> finalStates, Set<BasicBlock> visitedInPath) {
         if (visitedInPath.contains(currentBlock)) {
             System.out.println("Cycle detected at block " + currentBlock.getId() + " in method " + name);
-            finalStates.add(new JVMState(currentState));
+            finalStates.add(currentState.deepCopy());
             return;
         }
 
@@ -146,13 +146,13 @@ public class Method {
         // If no successors, add current state as final state
         if (nextBlocks.isEmpty()) {
             System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
-            finalStates.add(stateAfterBlock);
+            finalStates.add(stateAfterBlock.deepCopy());
         } else {
             // Execute recursively for each successor
             for (BasicBlock nextBlock : nextBlocks) {
                 System.out.println("Following path from block " + currentBlock.getId() +
                         " to block " + nextBlock.getId() + " in method " + name);
-                executeRecursive(nextBlock, stateAfterBlock, finalStates,
+                executeRecursive(nextBlock, stateAfterBlock.deepCopy(), finalStates,
                         new HashSet<>(visitedInPath));
             }
         }
@@ -186,10 +186,10 @@ public class Method {
                 instruction.addAnalysisResult("stackSize", state.getStackSize());
                 instruction.addAnalysisResult("sharingPairs", sharingPairs);
 
-                String instructionLabel = instruction.getLabel();
-                System.out.println(
-                        "  " + instruction + (instructionLabel != null ? " [" + instructionLabel + "]" : ""));
             }
+            String instructionLabel = instruction.getLabel();
+            System.out.println(
+                    "  " + instruction + (instructionLabel.isEmpty() ? "" : " [" + instructionLabel + "]"));
 
             // If the instruction is a CallInstruction, provide a reference to the program
             if (instruction instanceof CallInstruction) {

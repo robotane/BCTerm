@@ -375,7 +375,7 @@ public class SharingPairAnalyzer {
                 writer.write(dotContent.toString());
             }
 
-            System.out.println("DOT file generated successfully: " + dotFilePath);
+            // System.out.println("DOT file generated successfully: " + dotFilePath);
             return true;
 
         } catch (IOException | NumberFormatException e) {

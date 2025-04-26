@@ -8,7 +8,6 @@ public interface Value {
     /**
      * A constant representing a null value in the JVM state
      */
-
     Value NULL = new NullValue();
 
     /**
@@ -17,4 +16,11 @@ public interface Value {
      * @return the Java object representing this value
      */
     Object getValue();
+
+    /**
+     * Creates and returns a deep copy of this value.
+     * 
+     * @return A new Value instance that is a deep copy of this value
+     */
+    Value deepCopy();
 }

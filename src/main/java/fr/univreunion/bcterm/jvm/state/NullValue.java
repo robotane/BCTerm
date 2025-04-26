@@ -12,4 +12,8 @@ public class NullValue implements Value {
         return "null";
     }
 
+    @Override
+    public Value deepCopy() {
+        return Value.NULL;
+    }
 }

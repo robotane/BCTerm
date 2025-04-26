@@ -290,4 +290,39 @@ public class JVMState {
     public Map<LocationValue, JVMObject> getMemory() {
         return memory;
     }
+
+    /**
+     * Creates a deep copy of the current JVMState instance.
+     * 
+     * This method performs a complete deep copy of the JVM state, including:
+     * - Local variables
+     * - Operand stack
+     * - Memory map with objects
+     * 
+     * Each component is copied by creating new instances of values, locations, and
+     * objects.
+     * 
+     * @return A new JVMState instance that is a deep copy of the current state
+     */
+    public JVMState deepCopy() {
+        JVMState copy = new JVMState();
+
+        for (Value value : this.localVariables) {
+            copy.localVariables.add(value != null ? value.deepCopy() : Value.NULL);
+        }
+
+        for (Value value : this.operandStack) {
+            copy.operandStack.push(value != null ? value.deepCopy() : Value.NULL);
+        }
+
+        for (Map.Entry<LocationValue, JVMObject> entry : this.memory.entrySet()) {
+            LocationValue newLocation = (LocationValue) entry.getKey().deepCopy();
+
+            JVMObject copiedObject = entry.getValue().deepCopy();
+
+            copy.memory.put(newLocation, copiedObject);
+        }
+
+        return copy;
+    }
 }
