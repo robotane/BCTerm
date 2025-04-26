@@ -1,5 +1,7 @@
 package fr.univreunion.bcterm;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -210,8 +212,14 @@ public class SharingProgramExample {
         Program program = createSharingProgram();
         System.out.println(program);
 
+        File dotFile = new File("memoryGraph.dot");
+        if (dotFile.exists()) {
+            dotFile.delete();
+        }
+
         JVMState initialState = new JVMState();
         Set<JVMState> finalStates = program.execute(initialState);
+
         System.out.println("\nFinal state of the main method:");
         for (JVMState state : finalStates) {
             System.out.println("Local variables: " + state.getLocalVariablesSize());
@@ -221,5 +229,17 @@ public class SharingProgramExample {
 
         program.getMethod("expand").saveToFile();
         program.saveToFile("sharingPairs");
+
+        if (dotFile.exists()) {
+            try {
+                ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", "memoryGraph.dot", "-o", "memoryGraph.png");
+                Process p = pb.start();
+                p.waitFor();
+                System.out.println("Generated memoryGraph.png successfully.");
+
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Error generating PNG from DOT file: " + e.getMessage());
+            }
+        }
     }
 }

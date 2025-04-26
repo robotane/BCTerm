@@ -179,6 +179,7 @@ public class Method {
             if (this.name.equals("expand")) {
                 // Execute shared variables analysis
                 Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
+                SharingPairAnalyzer.generateMemoryGraph(state, "memoryGraph", instruction);
 
                 // Add analysis results to the instruction
                 instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
