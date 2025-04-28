@@ -17,9 +17,13 @@ public class StoreInstructionTest extends TestCase {
         // Create a new empty JVM state for testing
         state = new JVMState();
 
-        // Initialize some local variables
+        // Initialize local variables sequentially
         state.setLocalVariable(0, new IntegerValue(10));
         state.setLocalVariable(1, new IntegerValue(20));
+        // Initialize variables up to index 10 for testStoreWithIndexBeyondSize
+        for (int i = 2; i <= 10; i++) {
+            state.setLocalVariable(i, Value.NULL);
+        }
     }
 
     /**
@@ -126,13 +130,14 @@ public class StoreInstructionTest extends TestCase {
         // Push a value onto the stack
         state.pushStack(new IntegerValue(42));
 
-        // Create a store instruction with an index beyond the current size
+        // Create a store instruction with an index at the current size
+        // (Note: We've initialized variables up to index 10 in setUp)
         StoreInstruction instruction = new StoreInstruction(10);
 
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was successful (index beyond size is allowed)
+        // Check that execution was successful
         assertTrue(result);
 
         // Check that the stack is empty (value was popped)
@@ -142,6 +147,30 @@ public class StoreInstructionTest extends TestCase {
         Value localVar = state.getLocalVariable(10);
         assertTrue(localVar instanceof IntegerValue);
         assertEquals(42, localVar.getValue());
+    }
+
+    /**
+     * Test store instruction with an index beyond the current size + 1.
+     * This should now return false instead of throwing an exception.
+     */
+    public void testStoreWithIndexTooFarBeyondSize() {
+        // Push a value onto the stack
+        state.pushStack(new IntegerValue(42));
+
+        // Create a store instruction with an index far beyond the current size
+        StoreInstruction instruction = new StoreInstruction(20);
+
+        // Execute the instruction
+        boolean result = instruction.execute(state);
+
+        // Check that execution failed (invalid index)
+        assertFalse(result);
+
+        // Check that the stack still has the value (not popped)
+        assertEquals(1, state.getStackSize());
+        Value stackValue = state.popStack();
+        assertTrue(stackValue instanceof IntegerValue);
+        assertEquals(42, stackValue.getValue());
     }
 
     /**

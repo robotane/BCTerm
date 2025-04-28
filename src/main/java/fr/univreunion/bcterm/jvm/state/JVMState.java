@@ -166,12 +166,13 @@ public class JVMState {
      * @param value The Value to set
      */
     public void setLocalVariable(int index, Value value) {
-        // Expand the list if needed to reach the index
-        while (index >= localVariables.size()) {
-            localVariables.add(Value.NULL);
+        if (index > localVariables.size()) {
+            throw new IndexOutOfBoundsException("Cannot set local variable at index " + index);
+        } else if (index == localVariables.size()) {
+            localVariables.add(value);
+        } else {
+            localVariables.set(index, value);
         }
-        // Now set the value at the specified index
-        localVariables.set(index, value);
     }
 
     /**

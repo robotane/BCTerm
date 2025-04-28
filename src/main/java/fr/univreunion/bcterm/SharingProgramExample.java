@@ -40,7 +40,7 @@ public class SharingProgramExample {
 
         // Add the "main_term" method
         CFG mainTermCfg = createMainTermCFG();
-        program.addMethod("main_term", mainTermCfg);
+        program.addMethod("main_term", "(String[]):void", mainTermCfg);
 
         // Set the main method
         program.setMainMethodName("main_term");
@@ -218,6 +218,9 @@ public class SharingProgramExample {
         }
 
         JVMState initialState = new JVMState();
+        // Initialize local variable 0 with null to represent args
+        initialState.setLocalVariable(0, Value.NULL);
+
         Set<JVMState> finalStates = program.execute(initialState);
 
         System.out.println("\nFinal state of the main method:");

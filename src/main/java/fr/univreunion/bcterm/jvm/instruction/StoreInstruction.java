@@ -21,15 +21,12 @@ public class StoreInstruction extends BytecodeInstruction {
 
     @Override
     public boolean execute(JVMState state) {
-        if (state.getStackSize() > 0) {
-            if (index < 0) {
-                return false; // Invalid index
-            }
-            Value value = state.popStack();
-            state.setLocalVariable(index, value);
-            return true;
+        if (state.getStackSize() <= 0 || index < 0 || index > state.getLocalVariablesSize()) {
+            return false;
         }
-        return false;
+        Value value = state.popStack();
+        state.setLocalVariable(index, value);
+        return true;
     }
 
     @Override
