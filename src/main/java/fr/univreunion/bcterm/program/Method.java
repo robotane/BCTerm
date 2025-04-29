@@ -111,7 +111,7 @@ public class Method {
 
         Set<BasicBlock> visitedInPath = new HashSet<>();
 
-        executeRecursive(startBlock, new JVMState(initialState), finalStates, visitedInPath);
+        executeRecursive(startBlock, initialState, finalStates, visitedInPath);
 
         System.out.println("\nMethod " + name + " execution completed");
         System.out.println("Found " + finalStates.size() + " final states");
@@ -147,12 +147,13 @@ public class Method {
         if (nextBlocks.isEmpty()) {
             System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(stateAfterBlock.deepCopy());
+
         } else {
             // Execute recursively for each successor
             for (BasicBlock nextBlock : nextBlocks) {
                 System.out.println("Following path from block " + currentBlock.getId() +
                         " to block " + nextBlock.getId() + " in method " + name);
-                executeRecursive(nextBlock, stateAfterBlock.deepCopy(), finalStates,
+                executeRecursive(nextBlock, stateAfterBlock, finalStates,
                         new HashSet<>(visitedInPath));
             }
         }

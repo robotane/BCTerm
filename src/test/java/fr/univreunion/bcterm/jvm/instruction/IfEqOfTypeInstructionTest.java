@@ -55,8 +55,12 @@ public class IfEqOfTypeInstructionTest extends TestCase {
         // Check that execution was not successful (value was not 0)
         assertFalse(result);
 
-        // Check that the stack is now empty (value was popped)
-        assertEquals(0, state.getStackSize());
+        // Check that the stack still has the value (it wasn't popped since condition
+        // wasn't met)
+        assertEquals(1, state.getStackSize());
+        Value topValue = state.peekStack();
+        assertTrue(topValue instanceof IntegerValue);
+        assertEquals(42, ((IntegerValue) topValue).getValue().intValue());
     }
 
     /**
@@ -84,7 +88,8 @@ public class IfEqOfTypeInstructionTest extends TestCase {
      */
     public void testIfEqWithNonNullReference() {
         // Push a non-null reference onto the stack
-        state.pushStack(new LocationValue(12345, "java.lang.String"));
+        LocationValue locationValue = new LocationValue(12345, "java.lang.String");
+        state.pushStack(locationValue);
 
         // Create an ifeq instruction expecting null for a reference type
         IfEqOfTypeInstruction instruction = new IfEqOfTypeInstruction(new LocationValue(0, "java.lang.Object"));
@@ -95,8 +100,10 @@ public class IfEqOfTypeInstructionTest extends TestCase {
         // Check that execution was not successful (value was not null)
         assertFalse(result);
 
-        // Check that the stack is now empty (value was popped)
-        assertEquals(0, state.getStackSize());
+        // Check that the stack still has the value (it wasn't popped since condition
+        // wasn't met)
+        assertEquals(1, state.getStackSize());
+        assertEquals(locationValue, state.peekStack());
     }
 
     /**

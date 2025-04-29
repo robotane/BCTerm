@@ -71,8 +71,9 @@ public class GetFieldInstructionTest extends TestCase {
         // Check that execution failed (null reference)
         assertFalse(result);
 
-        // Check that the stack is now empty (value was popped but nothing pushed)
-        assertEquals(0, state.getStackSize());
+        // Check that the stack still has the null value (it wasn't popped)
+        assertEquals(1, state.getStackSize());
+        assertEquals(Value.NULL, state.peekStack());
     }
 
     /**

@@ -29,21 +29,24 @@ public class PutFieldInstruction extends BytecodeInstruction {
     @Override
     public boolean execute(JVMState state) {
         if (state.getStackSize() >= 2) {
-            Value v = state.popStack(); // Value to store
-            Value l = state.popStack(); // Object reference
+            // Get values without removing them
+            Value v = state.getStackElement(state.getStackSize() - 1); // Value to store
+            Value l = state.getStackElement(state.getStackSize() - 2); // Object reference
 
             // Check if l is null
             if (l instanceof NullValue) {
-                return false; // Stop execution
+                return false; // Null pointer exception, stop computation
             }
 
             // Check if l is a LocationValue
             if (l instanceof LocationValue) {
-                LocationValue LocationValue = (LocationValue) l.getValue();
-                JVMObject object = state.getObject(LocationValue);
+                LocationValue locationValue = (LocationValue) l;
+                JVMObject object = state.getObject(locationValue);
 
-                // Store the value v into the object's field f
                 if (object != null) {
+                    // Now we can modify the state
+                    state.popStack(); // Remove the value to store
+                    state.popStack(); // Remove the object reference
                     object.setField(fieldName, v);
                     return true;
                 }

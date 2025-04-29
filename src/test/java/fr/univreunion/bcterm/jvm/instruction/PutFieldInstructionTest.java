@@ -62,11 +62,11 @@ public class PutFieldInstructionTest extends TestCase {
      * Test putfield instruction with a null object reference.
      */
     public void testPutFieldWithNullReference() {
-        // Push the value to store onto the stack
-        state.pushStack(new IntegerValue(42));
-
         // Push null reference onto the stack
         state.pushStack(Value.NULL);
+
+        // Push the value to store onto the stack
+        state.pushStack(new IntegerValue(42));
 
         // Create a putfield instruction
         PutFieldInstruction instruction = new PutFieldInstruction("anyField");
@@ -77,8 +77,16 @@ public class PutFieldInstructionTest extends TestCase {
         // Check that execution failed (null reference)
         assertFalse(result);
 
-        // Check that the stack is now empty (both values were popped)
-        assertEquals(0, state.getStackSize());
+        // Check that the stack still has both values (they weren't popped since
+        // execution failed)
+        assertEquals(2, state.getStackSize());
+
+        // Verify the values are still on the stack in the correct order
+        Value topValue = state.popStack();
+        assertTrue(topValue instanceof IntegerValue);
+        assertEquals(42, ((IntegerValue) topValue).getValue().intValue());
+
+        assertEquals(Value.NULL, state.popStack());
     }
 
     /**

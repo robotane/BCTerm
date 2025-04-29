@@ -26,7 +26,7 @@ public class GetFieldInstruction extends BytecodeInstruction {
     @Override
     public boolean execute(JVMState state) {
         if (state.getStackSize() > 0) {
-            Value value = state.popStack();
+            Value value = state.peekStack();
 
             // Check if value is null
             if (value instanceof NullValue) {
@@ -40,6 +40,7 @@ public class GetFieldInstruction extends BytecodeInstruction {
 
                 if (object != null) {
                     // Get the field value o(f) from the object and push it onto the stack
+                    state.popStack(); // Actually remove the object reference from the stack
                     Value fieldValue = object.getField(fieldName);
                     state.pushStack(fieldValue);
                     return true;

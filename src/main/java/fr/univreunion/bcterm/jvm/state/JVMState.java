@@ -44,16 +44,41 @@ public class JVMState {
     }
 
     /**
-     * Creates a copy of the provided JVMState.
-     * 
-     * @param initialState The JVMState to copy
+     * Constructs a new JVMState by creating a copy of the given initial state,
+     * sharing the memory by default.
+     *
+     * @param initialState The initial JVM state to copy
      */
     public JVMState(JVMState initialState) {
+        this(initialState, true, false);
+    }
+
+    /**
+     * Constructs a new JVMState by creating a copy of the given initial state.
+     *
+     * @param initialState   The initial JVM state to copy
+     * @param shareMemory    If true, shares the memory reference from the initial
+     *                       state
+     * @param deepCopyMemory If true, creates a deep copy of the memory; takes
+     *                       precedence over shareMemory
+     */
+    public JVMState(JVMState initialState, boolean shareMemory, boolean deepCopyMemory) {
         this.localVariables = new ArrayList<>(initialState.localVariables);
+
         this.operandStack = new Stack<>();
         this.operandStack.addAll(initialState.operandStack);
-
-        this.memory = new HashMap<>(initialState.memory);
+        if (shareMemory) {
+            this.memory = initialState.memory;
+        } else if (deepCopyMemory) {
+            this.memory = new HashMap<>();
+            for (Map.Entry<LocationValue, JVMObject> entry : initialState.memory.entrySet()) {
+                LocationValue locationCopy = (LocationValue) entry.getKey().deepCopy();
+                JVMObject objectCopy = entry.getValue().deepCopy();
+                this.memory.put(locationCopy, objectCopy);
+            }
+        } else {
+            this.memory = new HashMap<>(initialState.memory);
+        }
     }
 
     /**

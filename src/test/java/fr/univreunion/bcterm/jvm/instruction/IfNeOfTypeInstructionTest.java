@@ -32,12 +32,15 @@ public class IfNeOfTypeInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was successful (value was 0, and we want to continue if
-        // it's not non-zero)
-        assertTrue(result);
+        // Check that execution failed (value was 0, and we want to stop if it's not
+        // non-zero)
+        assertFalse(result);
 
-        // Check that the stack is now empty (value was popped)
-        assertEquals(0, state.getStackSize());
+        // The stack should still have the value since the condition wasn't met
+        assertEquals(1, state.getStackSize());
+        Value topValue = state.peekStack();
+        assertTrue(topValue instanceof IntegerValue);
+        assertEquals(0, ((IntegerValue) topValue).getValue().intValue());
     }
 
     /**
@@ -53,9 +56,8 @@ public class IfNeOfTypeInstructionTest extends TestCase {
         // Execute the instruction
         boolean result = instruction.execute(state);
 
-        // Check that execution was not successful (value was non-zero, and we want to
-        // stop if it's non-zero)
-        assertFalse(result);
+        // Check that execution was successful (value was non-zero)
+        assertTrue(result);
 
         // Check that the stack is now empty (value was popped)
         assertEquals(0, state.getStackSize());
@@ -75,12 +77,13 @@ public class IfNeOfTypeInstructionTest extends TestCase {
         boolean result = instruction.execute(state);
 
         // Check that execution was not successful (value was null, and we want to
-        // continue
-        // if it's not non-null)
+        // continue if it's not non-null)
         assertFalse(result);
 
-        // Check that the stack is now empty (value was popped)
-        assertEquals(0, state.getStackSize());
+        // Check that the stack still has the null value (it wasn't popped since
+        // condition wasn't met)
+        assertEquals(1, state.getStackSize());
+        assertEquals(Value.NULL, state.peekStack());
     }
 
     /**
@@ -88,7 +91,8 @@ public class IfNeOfTypeInstructionTest extends TestCase {
      */
     public void testIfNeWithNonNullReference() {
         // Push a non-null reference onto the stack
-        state.pushStack(new LocationValue(12345, "java.lang.String"));
+        LocationValue locationValue = new LocationValue(12345, "java.lang.String");
+        state.pushStack(locationValue);
 
         // Create an ifne instruction expecting null for a reference type
         IfNeOfTypeInstruction instruction = new IfNeOfTypeInstruction(new LocationValue(0, "java.lang.Object"));
