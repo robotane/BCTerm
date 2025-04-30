@@ -212,9 +212,15 @@ public class SharingProgramExample {
         Program program = createSharingProgram();
         System.out.println(program);
 
-        File dotFile = new File("memoryGraph.dot");
-        if (dotFile.exists()) {
-            dotFile.delete();
+        // Delete all existing memoryGraph_*.dot files
+        File dir = new File(".");
+        File[] dotFiles = dir.listFiles((d, name) -> name.startsWith("memoryGraph_") && name.endsWith(".dot"));
+        if (dotFiles != null) {
+            for (File file : dotFiles) {
+                if (file.delete()) {
+                    System.out.println("Deleted existing file: " + file.getName());
+                }
+            }
         }
 
         JVMState initialState = new JVMState();
@@ -233,15 +239,21 @@ public class SharingProgramExample {
         program.getMethod("expand").saveToFile();
         program.saveToFile("sharingPairs");
 
-        if (dotFile.exists()) {
-            try {
-                ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", "memoryGraph.dot", "-o", "memoryGraph.png");
-                Process p = pb.start();
-                p.waitFor();
-                System.out.println("Generated memoryGraph.png successfully.");
-
-            } catch (IOException | InterruptedException e) {
-                System.err.println("Error generating PNG from DOT file: " + e.getMessage());
+        // Generate PDFs for all memoryGraph_*.dot files
+        dotFiles = dir.listFiles((d, name) -> name.startsWith("memoryGraph_") && name.endsWith(".dot"));
+        if (dotFiles != null) {
+            for (File dotFile : dotFiles) {
+                String baseName = dotFile.getName().substring(0, dotFile.getName().length() - 4); // Remove .dot
+                try {
+                    // Generate PNG
+                    ProcessBuilder pbPng = new ProcessBuilder("dot", "-Tpng", dotFile.getName(), "-o",
+                            baseName + ".png");
+                    Process pPng = pbPng.start();
+                    pPng.waitFor();
+                    System.out.println("Generated " + baseName + ".png successfully.");
+                } catch (IOException | InterruptedException e) {
+                    System.err.println("Error generating files from " + dotFile.getName() + ": " + e.getMessage());
+                }
             }
         }
     }

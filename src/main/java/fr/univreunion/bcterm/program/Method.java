@@ -14,6 +14,7 @@ import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.util.MemoryGraphGenerator;
 
 /**
  * Represents a method in a program with its control flow graph and associated
@@ -125,9 +126,12 @@ public class Method {
 
     private void executeRecursive(BasicBlock currentBlock, JVMState currentState,
             Set<JVMState> finalStates, Set<BasicBlock> visitedInPath) {
+        String memoryGraphPath = "memoryGraph_" + methodCallId;
         if (visitedInPath.contains(currentBlock)) {
             System.out.println("Cycle detected at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(currentState.deepCopy());
+
+            MemoryGraphGenerator.generateFinalMemoryGraph(new JVMState(currentState), memoryGraphPath, true, true);
             return;
         }
 
@@ -151,6 +155,7 @@ public class Method {
             System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(stateAfterBlock.deepCopy());
 
+            MemoryGraphGenerator.generateFinalMemoryGraph(stateAfterBlock, memoryGraphPath, true, true);
         } else {
             // Execute recursively for each successor
             for (BasicBlock nextBlock : nextBlocks) {
@@ -195,7 +200,9 @@ public class Method {
                 ((CallInstruction) instruction).setProgram(program);
             }
 
-            boolean result = instruction.execute(state); // Execute the instruction
+            String memoryGraphPath = "memoryGraph_" + methodCallId;
+            MemoryGraphGenerator.generateMemoryGraph(state, memoryGraphPath, instruction, true, true);
+
             boolean result = instruction.execute(state);
 
             if (!result) {
