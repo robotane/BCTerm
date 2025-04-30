@@ -19,7 +19,7 @@ public class Constants {
     public static final String ANALYSIS_RESULT_ALL = "all";
 
     // File generation constants
-    public static final boolean ENABLE_FILE_GENERATION = false;
+    public static final boolean ENABLE_FILE_GENERATION = true;
 
     // Memory graph related constants
     public static final String GENERATED_DIR = "generated";
