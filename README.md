@@ -1,22 +1,16 @@
 # BCTerm
 
-A formal Java bytecode interpreter that models the JVM execution environment with precise tracking of states during bytecode execution. Designed for program verification, bytecode semantics analysis, and termination proof validation.
-
-## Overview
-
-BCTerm implements a formal model of the Java Virtual Machine state, representing the complete execution environment including local variables, operand stack, and memory heap. This allows for precise tracking and analysis of bytecode execution.
+A formal Java bytecode analyzer that models the JVM execution environment for static analysis. BCTerm simulates how bytecode instructions affect the stack, local variables, and heap without actually running the program, enabling bytecode semantics analysis and termination proof validation.
 
 ## Features
 
-- Complete JVM state modeling
-- Detailed state visualization
+- Basic JVM state modeling (stack, locals, heap)
 - Object allocation and reference tracking
-- Bytecode execution simulation
-- Support for advanced program analyses:
+- Support for basic bytecode instructions
+- Basic program structure representation with CFG (Control Flow Graph)
+- Support for analyses:
   - Pair-sharing analysis
-  - Cyclicity analysis
-  - Aliasing analysis
-- Path-length analysis for termination verification
+  - Memory graph generation
 
 ## Getting Started
 
@@ -31,7 +25,7 @@ BCTerm implements a formal model of the Java Virtual Machine state, representing
 mvn clean install
 ```
 
-### Running BCTerm
+### Usage
 
 Not yet implemented.
 
@@ -41,10 +35,17 @@ java -jar bcterm.jar <path-to-class-file>
 
 ## Project Structure
 
-- `src/main/java/fr/univreunion/bcterm/jvm/state/` - Core JVM state representation
-- `src/main/java/fr/univreunion/bcterm/jvm/instruction/ `- Bytecode instruction implementations
-- `src/main/java/fr/univreunion/bcterm/program/` - Program structure representation
-- Additional packages for bytecode parsing, execution, and analysis (TODO)
+- `src/main/java/fr/univreunion/bcterm/jvm/state/` - Core JVM state representation (Integer, Location, Null values, Objects)
+- `src/main/java/fr/univreunion/bcterm/jvm/instruction/` - Supported bytecode instructions:
+  - Stack Operations (Load, Store, Dup, Const)
+  - Arithmetic Operations (Add)
+  - Object Operations (New, GetField, PutField)
+  - Control Flow (IfEqOfType, IfNeOfType)
+  - Method Operations (Call)
+- `src/main/java/fr/univreunion/bcterm/program/` - Program structure representation (BasicBlock, CFG, Method, Program)
+- `src/main/java/fr/univreunion/bcterm/analysis/` - Analysis implementations:
+  - `sharing/` - Pair-sharing analysis
+  - `graph/` - Memory graph generation
 
 ## Contributors
 
