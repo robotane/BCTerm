@@ -43,7 +43,14 @@ public class MemoryGraphGenerator {
             Map<String, Set<Long>> pointsToGraph = SharingPairAnalyzer.buildPointsToGraph(state);
 
             StringBuilder dotContent = new StringBuilder();
-            String dotFilePath = outputPath + ".dot";
+
+            // Create generated directory if it doesn't exist
+            File generatedDir = new File(Constants.GENERATED_DIR);
+            if (!generatedDir.exists()) {
+                generatedDir.mkdirs();
+            }
+
+            String dotFilePath = new File(generatedDir, outputPath + ".dot").getPath();
             long timestamp = System.currentTimeMillis();
 
             initializeDotFile(dotContent, dotFilePath);
@@ -90,6 +97,12 @@ public class MemoryGraphGenerator {
 
     private static void initializeDotFile(StringBuilder dotContent, String dotFilePath) throws IOException {
         File dotFile = new File(dotFilePath);
+
+        // Create parent directories if they don't exist
+        if (!dotFile.getParentFile().exists()) {
+            dotFile.getParentFile().mkdirs();
+        }
+
         if (!dotFile.exists()) {
             dotContent.append("digraph MemoryGraph {\n");
             dotContent.append(" node [shape=box, style=filled, fillcolor=lightblue];\n");
@@ -461,7 +474,14 @@ public class MemoryGraphGenerator {
 
             // Generate DOT content
             StringBuilder dotContent = new StringBuilder();
-            String dotFilePath = outputPath + ".dot";
+
+            // Create generated directory if it doesn't exist
+            File generatedDir = new File(Constants.GENERATED_DIR);
+            if (!generatedDir.exists()) {
+                generatedDir.mkdirs();
+            }
+
+            String dotFilePath = new File(generatedDir, outputPath + ".dot").getPath();
             long timestamp = System.currentTimeMillis();
 
             // Initialize the DOT file

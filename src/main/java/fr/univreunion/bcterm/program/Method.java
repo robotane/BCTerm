@@ -14,6 +14,7 @@ import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.util.Constants;
 import fr.univreunion.bcterm.util.MemoryGraphGenerator;
 
 /**
@@ -75,7 +76,7 @@ public class Method {
      * @param program The program containing this method
      */
     public Method(String name, CFG cfg, Program program) {
-        this(name, "():void", cfg, program);
+        this(name, Constants.DEFAULT_METHOD_SIGNATURE, cfg, program);
     }
 
     public String getName() {
@@ -126,12 +127,15 @@ public class Method {
 
     private void executeRecursive(BasicBlock currentBlock, JVMState currentState,
             Set<JVMState> finalStates, Set<BasicBlock> visitedInPath) {
-        String memoryGraphPath = "memoryGraph_" + methodCallId;
+        String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + methodCallId;
         if (visitedInPath.contains(currentBlock)) {
             System.out.println("Cycle detected at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(currentState.deepCopy());
 
-            MemoryGraphGenerator.generateFinalMemoryGraph(new JVMState(currentState), memoryGraphPath, true, true);
+            if (Constants.ENABLE_FILE_GENERATION) {
+                MemoryGraphGenerator.generateFinalMemoryGraph(new JVMState(currentState), memoryGraphPath,
+                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+            }
             return;
         }
 
@@ -141,7 +145,6 @@ public class Method {
 
         JVMState stateAfterBlock = executeBlock(currentBlock, new JVMState(currentState));
 
-        // If execution failed, stop this path
         if (stateAfterBlock == null) {
             System.out.println("Execution of block " + currentBlock.getId() + " failed in method " + name);
             visitedInPath.remove(currentBlock);
@@ -150,12 +153,14 @@ public class Method {
 
         Set<BasicBlock> nextBlocks = getBlockSuccessors(currentBlock);
 
-        // If no successors, add current state as final state
         if (nextBlocks.isEmpty()) {
             System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(stateAfterBlock.deepCopy());
 
-            MemoryGraphGenerator.generateFinalMemoryGraph(stateAfterBlock, memoryGraphPath, true, true);
+            if (Constants.ENABLE_FILE_GENERATION) {
+                MemoryGraphGenerator.generateFinalMemoryGraph(stateAfterBlock, memoryGraphPath,
+                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+            }
         } else {
             // Execute recursively for each successor
             for (BasicBlock nextBlock : nextBlocks) {
@@ -188,9 +193,9 @@ public class Method {
             Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
 
             // Add analysis results to the instruction
-            instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
-            instruction.addAnalysisResult("stackSize", state.getStackSize());
-            instruction.addAnalysisResult("sharingPairs", sharingPairs);
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, state.getLocalVariablesSize());
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, state.getStackSize());
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS, sharingPairs);
 
             String instructionLabel = instruction.getLabel();
             System.out.println(
@@ -200,10 +205,13 @@ public class Method {
                 ((CallInstruction) instruction).setProgram(program);
             }
 
-            String memoryGraphPath = "memoryGraph_" + methodCallId;
-            MemoryGraphGenerator.generateMemoryGraph(state, memoryGraphPath, instruction, true, true);
+            if (Constants.ENABLE_FILE_GENERATION) {
+                String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + methodCallId;
+                MemoryGraphGenerator.generateMemoryGraph(state, memoryGraphPath, instruction,
+                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+            }
 
-            boolean result = instruction.execute(state);
+            boolean result = instruction.execute(state); // Execute the instruction
 
             if (!result) {
                 System.out.println("  Instruction execution failed");
@@ -310,9 +318,15 @@ public class Method {
         String filename = cleanString(name);
 
         try {
+            // Create generated directory if it doesn't exist
+            File generatedDir = new File(Constants.GENERATED_DIR);
+            if (!generatedDir.exists()) {
+                generatedDir.mkdirs();
+            }
+
             // Write DOT content to a file
-            File dotFile = new File(filename + ".dot");
-            File outputFile = new File(filename + "." + extension);
+            File dotFile = new File(generatedDir, filename + Constants.DOT_FILE_EXTENSION);
+            File outputFile = new File(generatedDir, filename + "." + extension);
 
             try (FileWriter writer = new FileWriter(dotFile)) {
                 writer.write(dot);
@@ -322,7 +336,11 @@ public class Method {
             }
 
             // Generate output using dot command
-            ProcessBuilder pb = new ProcessBuilder("dot", "-T" + extension, dotFile.getAbsolutePath(), "-o",
+            ProcessBuilder pb = new ProcessBuilder(
+                    Constants.DOT_COMMAND,
+                    Constants.DOT_TYPE_FLAG_PREFIX + extension,
+                    dotFile.getAbsolutePath(),
+                    Constants.DOT_OUTPUT_FLAG,
                     outputFile.getAbsolutePath());
             Process process = pb.start();
             process.waitFor();
@@ -341,7 +359,7 @@ public class Method {
      * @param labelKey A key used to customize node labels in the graph
      */
     public void saveToFile(String labelKey) {
-        saveToFile(labelKey, "png");
+        saveToFile(labelKey, Constants.DEFAULT_GRAPH_EXTENSION);
     }
 
     /**
@@ -349,7 +367,7 @@ public class Method {
      * Uses an empty label key and PNG as the default output format.
      */
     public void saveToFile() {
-        saveToFile("", "png");
+        saveToFile("", Constants.DEFAULT_GRAPH_EXTENSION);
     }
 
     /**
@@ -364,5 +382,4 @@ public class Method {
     private String cleanString(String input) {
         return input.replaceAll("[^a-zA-Z0-9_]", "_");
     }
-
 }

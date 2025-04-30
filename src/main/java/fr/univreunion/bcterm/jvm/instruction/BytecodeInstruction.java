@@ -7,6 +7,7 @@ import java.util.Set;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.util.Constants;
 
 /**
  * Represents an abstract bytecode instruction in the JVM with analysis and
@@ -55,12 +56,12 @@ public abstract class BytecodeInstruction {
         }
 
         StringBuilder builtLabel = new StringBuilder();
-        String localVarsAndStack = getLabelFor("localVarsAndStack");
+        String localVarsAndStack = getLabelFor(Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK);
         if (!localVarsAndStack.isEmpty()) {
             builtLabel.append(localVarsAndStack);
         }
 
-        String sharingPairs = getLabelFor("sharingPairs");
+        String sharingPairs = getLabelFor(Constants.ANALYSIS_RESULT_SHARING_PAIRS);
         if (!sharingPairs.isEmpty()) {
             if (builtLabel.length() > 0) {
                 builtLabel.append(",");
@@ -68,7 +69,7 @@ public abstract class BytecodeInstruction {
             builtLabel.append(sharingPairs);
         }
 
-        String cyclicVars = getLabelFor("cyclicVars");
+        String cyclicVars = getLabelFor(Constants.ANALYSIS_RESULT_CYCLIC_VARS);
         if (!cyclicVars.isEmpty()) {
             if (builtLabel.length() > 0) {
                 builtLabel.append(",");
@@ -76,7 +77,7 @@ public abstract class BytecodeInstruction {
             builtLabel.append(cyclicVars);
         }
 
-        String aliasPairs = getLabelFor("aliasPairs");
+        String aliasPairs = getLabelFor(Constants.ANALYSIS_RESULT_ALIAS_PAIRS);
         if (!aliasPairs.isEmpty()) {
             if (builtLabel.length() > 0) {
                 builtLabel.append(",");
@@ -112,39 +113,43 @@ public abstract class BytecodeInstruction {
      */
     public String getLabelFor(String key) {
 
-        if (!key.equals("localVarsAndStack") && !key.equals("all") && !analysisResults.containsKey(key)) {
+        if (!key.equals(Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK) &&
+                !key.equals(Constants.ANALYSIS_RESULT_ALL) &&
+                !analysisResults.containsKey(key)) {
             return "";
         }
 
         Object value = analysisResults.get(key);
 
-        if (!key.equals("localVarsAndStack") && !key.equals("all") && value == null) {
+        if (!key.equals(Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK) &&
+                !key.equals(Constants.ANALYSIS_RESULT_ALL) &&
+                value == null) {
             return "";
         }
 
         switch (key) {
-            case "sharingPairs":
+            case Constants.ANALYSIS_RESULT_SHARING_PAIRS:
                 return SharingPairAnalyzer.formatForLabel((Set<SharingPair>) value);
-            case "cyclicVars":
+            case Constants.ANALYSIS_RESULT_CYCLIC_VARS:
                 return "{}"; // Not implemented yet
-            case "aliasPairs":
+            case Constants.ANALYSIS_RESULT_ALIAS_PAIRS:
                 return "{}"; // Not implemented yet
-            case "localVarsAndStack":
+            case Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK:
                 StringBuilder builtLabel = new StringBuilder();
-                if (analysisResults.containsKey("localVarsCount")) {
-                    builtLabel.append(analysisResults.get("localVarsCount").toString());
+                if (analysisResults.containsKey(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT)) {
+                    builtLabel.append(analysisResults.get(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT).toString());
                 }
-                if (analysisResults.containsKey("stackSize")) {
+                if (analysisResults.containsKey(Constants.ANALYSIS_RESULT_STACK_SIZE)) {
                     if (builtLabel.length() > 0)
                         builtLabel.append(",");
-                    builtLabel.append(analysisResults.get("stackSize").toString());
+                    builtLabel.append(analysisResults.get(Constants.ANALYSIS_RESULT_STACK_SIZE).toString());
                 }
                 return builtLabel.toString();
-            case "localVarsCount":
-                return analysisResults.get("localVarsCount").toString();
-            case "stackSize":
-                return analysisResults.get("stackSize").toString();
-            case "all":
+            case Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT:
+                return analysisResults.get(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT).toString();
+            case Constants.ANALYSIS_RESULT_STACK_SIZE:
+                return analysisResults.get(Constants.ANALYSIS_RESULT_STACK_SIZE).toString();
+            case Constants.ANALYSIS_RESULT_ALL:
                 return getLabel();
             default:
                 return value.toString();

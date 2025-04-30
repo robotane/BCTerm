@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.jvm.state.JVMState;
+import fr.univreunion.bcterm.util.Constants;
 
 /**
  * Represents a program containing a collection of methods with a designated
@@ -180,7 +181,7 @@ public class Program {
         dot.append("  label=\"").append(this.name).append("\"\n");
 
         // Add the global graph attributes
-        dot.append("  node [shape=box fontname=\"monospace\"];\n");
+        dot.append("  node [shape=").append(Constants.DOT_NODE_SHAPE).append(" fontname=\"monospace\"];\n");
         dot.append("  edge [color=blue];\n");
 
         // Create a subgraph for each method
@@ -204,9 +205,15 @@ public class Program {
         String dot = toDOT(labelKey);
         String filename = this.name;
         try {
-            // Write DOT content to temporary file
-            File dotFile = new File(filename + ".dot");
-            File outputFile = new File(filename + "." + extension);
+            // Create generated directory if it doesn't exist
+            File generatedDir = new File(Constants.GENERATED_DIR);
+            if (!generatedDir.exists()) {
+                generatedDir.mkdirs();
+            }
+
+            // Write DOT content to file
+            File dotFile = new File(generatedDir, filename + Constants.DOT_FILE_EXTENSION);
+            File outputFile = new File(generatedDir, filename + "." + extension);
             try (FileWriter writer = new FileWriter(dotFile)) {
                 writer.write(dot);
                 System.out.println("Generated " + dotFile + " successfully.");
@@ -215,7 +222,11 @@ public class Program {
             }
 
             // Generate output using dot command
-            ProcessBuilder pb = new ProcessBuilder("dot", "-T" + extension, dotFile.getAbsolutePath(), "-o",
+            ProcessBuilder pb = new ProcessBuilder(
+                    Constants.DOT_COMMAND,
+                    Constants.DOT_TYPE_FLAG_PREFIX + extension,
+                    dotFile.getAbsolutePath(),
+                    Constants.DOT_OUTPUT_FLAG,
                     outputFile.getAbsolutePath());
             Process process = pb.start();
             process.waitFor();
@@ -233,7 +244,7 @@ public class Program {
      * @param labelKey the key used for labeling nodes in the graph
      */
     public void saveToFile(String labelKey) {
-        saveToFile(labelKey, "png");
+        saveToFile(labelKey, Constants.DEFAULT_GRAPH_EXTENSION);
     }
 
     /**

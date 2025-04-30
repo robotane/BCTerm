@@ -23,6 +23,7 @@ import fr.univreunion.bcterm.jvm.state.Value;
 import fr.univreunion.bcterm.program.BasicBlock;
 import fr.univreunion.bcterm.program.CFG;
 import fr.univreunion.bcterm.program.Program;
+import fr.univreunion.bcterm.util.Constants;
 
 public class SharingProgramExample {
 
@@ -212,13 +213,17 @@ public class SharingProgramExample {
         Program program = createSharingProgram();
         System.out.println(program);
 
-        // Delete all existing memoryGraph_*.dot files
-        File dir = new File(".");
-        File[] dotFiles = dir.listFiles((d, name) -> name.startsWith("memoryGraph_") && name.endsWith(".dot"));
-        if (dotFiles != null) {
-            for (File file : dotFiles) {
-                if (file.delete()) {
-                    System.out.println("Deleted existing file: " + file.getName());
+        if (Constants.ENABLE_FILE_GENERATION) {
+            // Delete all existing memoryGraph_*.dot files
+            File dir = new File(Constants.GENERATED_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            File[] dotFiles = dir.listFiles((d, name) -> name.startsWith(Constants.MEMORY_GRAPH_PREFIX)
+                    && name.endsWith(Constants.DOT_FILE_EXTENSION));
+            if (dotFiles != null) {
+                for (File file : dotFiles) {
+                    file.delete();
                 }
             }
         }
@@ -236,23 +241,34 @@ public class SharingProgramExample {
             System.out.println(state.toDetailedString());
         }
 
-        program.getMethod("expand").saveToFile();
-        program.saveToFile("sharingPairs");
+        if (Constants.ENABLE_FILE_GENERATION) {
+            program.getMethod("expand").saveToFile();
+            program.saveToFile("sharingPairs");
 
-        // Generate PDFs for all memoryGraph_*.dot files
-        dotFiles = dir.listFiles((d, name) -> name.startsWith("memoryGraph_") && name.endsWith(".dot"));
-        if (dotFiles != null) {
-            for (File dotFile : dotFiles) {
-                String baseName = dotFile.getName().substring(0, dotFile.getName().length() - 4); // Remove .dot
-                try {
-                    // Generate PNG
-                    ProcessBuilder pbPng = new ProcessBuilder("dot", "-Tpng", dotFile.getName(), "-o",
-                            baseName + ".png");
-                    Process pPng = pbPng.start();
-                    pPng.waitFor();
-                    System.out.println("Generated " + baseName + ".png successfully.");
-                } catch (IOException | InterruptedException e) {
-                    System.err.println("Error generating files from " + dotFile.getName() + ": " + e.getMessage());
+            // Generate graphics for all memoryGraph_*.dot files
+            File dir = new File(Constants.GENERATED_DIR);
+            File[] dotFiles = dir.listFiles((d, name) -> name.startsWith(Constants.MEMORY_GRAPH_PREFIX)
+                    && name.endsWith(Constants.DOT_FILE_EXTENSION));
+            if (dotFiles != null) {
+                for (File dotFile : dotFiles) {
+                    String baseName = dotFile.getName().substring(0,
+                            dotFile.getName().length() - Constants.DOT_FILE_EXTENSION.length());
+                    try {
+                        ProcessBuilder pbDefault = new ProcessBuilder(
+                                Constants.DOT_COMMAND,
+                                Constants.DOT_TYPE_FLAG_PREFIX + Constants.DEFAULT_GRAPH_EXTENSION,
+                                dotFile.getAbsolutePath(),
+                                Constants.DOT_OUTPUT_FLAG,
+                                new File(Constants.GENERATED_DIR, baseName + "." + Constants.DEFAULT_GRAPH_EXTENSION)
+                                        .getAbsolutePath());
+                        Process pDefault = pbDefault.start();
+                        pDefault.waitFor();
+                        System.out.println(
+                                "Generated " + dotFile + "." + Constants.DEFAULT_GRAPH_EXTENSION
+                                        + " successfully.");
+                    } catch (IOException | InterruptedException e) {
+                        System.err.println("Error generating files from " + dotFile.getName() + ": " + e.getMessage());
+                    }
                 }
             }
         }
