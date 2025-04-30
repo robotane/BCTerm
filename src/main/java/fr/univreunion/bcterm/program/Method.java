@@ -29,6 +29,7 @@ public class Method {
     private final CFG cfg;
     private Program program; // TDOO: may be final ?
     private final Map<BasicBlock, Set<BasicBlock>> blockSuccessors;
+    private String methodCallId;
 
     /**
      * Constructs a Method with a specific name, signature, control flow graph, and
@@ -101,7 +102,9 @@ public class Method {
     }
 
     public Set<JVMState> execute(JVMState initialState) {
-        // Method execution ...
+        methodCallId = SharingPairAnalyzer.getNextMethodCallId(name);
+
+        SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
         System.out.println("\nExecuting method " + name);
         System.out.println("---------------------------------");
 
@@ -177,33 +180,32 @@ public class Method {
                 continue;
             }
 
-            if (this.name.equals("expand")) {
-                // Execute shared variables analysis
-                Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
-                SharingPairAnalyzer.generateMemoryGraph(state, "memoryGraph", instruction);
+            Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
 
-                // Add analysis results to the instruction
-                instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
-                instruction.addAnalysisResult("stackSize", state.getStackSize());
-                instruction.addAnalysisResult("sharingPairs", sharingPairs);
+            // Add analysis results to the instruction
+            instruction.addAnalysisResult("localVarsCount", state.getLocalVariablesSize());
+            instruction.addAnalysisResult("stackSize", state.getStackSize());
+            instruction.addAnalysisResult("sharingPairs", sharingPairs);
 
-            }
             String instructionLabel = instruction.getLabel();
             System.out.println(
                     "  " + instruction + (instructionLabel.isEmpty() ? "" : " [" + instructionLabel + "]"));
 
-            // If the instruction is a CallInstruction, provide a reference to the program
             if (instruction instanceof CallInstruction) {
                 ((CallInstruction) instruction).setProgram(program);
             }
 
             boolean result = instruction.execute(state); // Execute the instruction
+            boolean result = instruction.execute(state);
 
-            // If execution failed, stop block execution
             if (!result) {
                 System.out.println("  Instruction execution failed");
                 // System.out.println(state.toDetailedString());
                 return null;
+            }
+
+            if (instruction instanceof CallInstruction) {
+                SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
             }
         }
 

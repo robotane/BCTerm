@@ -1,9 +1,5 @@
 package fr.univreunion.bcterm.analysis.sharing;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
-import fr.univreunion.bcterm.jvm.state.JVMObject;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.LocationValue;
 import fr.univreunion.bcterm.jvm.state.Value;
@@ -38,6 +33,95 @@ import fr.univreunion.bcterm.jvm.state.Value;
  */
 public class SharingPairAnalyzer {
 
+    // Map from method call ID to set of sharing pairs for that method call
+    private static final Map<String, Set<SharingPair>> methodCallSharingPairs = new HashMap<>();
+
+    // Current method call being analyzed
+    private static String currentMethodCall = null;
+
+    // Counter for method calls
+    private static final Map<String, Integer> methodCallCounters = new HashMap<>();
+
+    /**
+     * Sets the current method call being analyzed.
+     * This should be called at the beginning of a method execution.
+     *
+     * @param methodCallId The unique identifier for this method call
+     */
+    public static void setCurrentMethodCall(String methodCallId) {
+        currentMethodCall = methodCallId;
+        // Initialize the sharing pairs set for this method call if it doesn't exist
+        methodCallSharingPairs.putIfAbsent(methodCallId, new HashSet<>());
+    }
+
+    /**
+     * Gets the current method call being analyzed.
+     *
+     * @return The identifier of the current method call
+     */
+    public static String getCurrentMethodCall() {
+        return currentMethodCall;
+    }
+
+    /**
+     * Gets a unique identifier for a method call
+     * 
+     * @param methodName The name of the method
+     * @return A unique identifier for this method call
+     */
+    public static String getNextMethodCallId(String methodName) {
+        // Get the current count for this method and increment it
+        int count = methodCallCounters.getOrDefault(methodName, 0) + 1;
+        methodCallCounters.put(methodName, count);
+
+        // Return a unique identifier combining method name and call count
+        return methodName + "_call" + count;
+    }
+
+    /**
+     * Resets the sharing analysis state for all methods.
+     * Should be called at the beginning of a new program execution.
+     */
+    public static void resetAll() {
+        methodCallSharingPairs.clear();
+        methodCallCounters.clear();
+        currentMethodCall = null;
+    }
+
+    /**
+     * Resets the sharing analysis state for a specific method.
+     *
+     * @param methodName The name of the method to reset
+     */
+    public static void resetMethod(String methodName) {
+        methodCallSharingPairs.put(methodName, new HashSet<>());
+    }
+
+    /**
+     * Analyzes the JVM state to determine pairs of variables that might share.
+     *
+     * @param state       The JVM state to analyze
+     * @param instruction The current bytecode instruction
+     * @return The set of variable pairs that might share
+     */
+    public static Set<SharingPair> analyze(JVMState state, BytecodeInstruction instruction) {
+        if (currentMethodCall == null) {
+            System.out.println("Warning: No current method call set for sharing analysis");
+            return new HashSet<>();
+        }
+
+        // Build accessibility graph
+        Map<String, Set<Long>> pointsToGraph = buildPointsToGraph(state);
+
+        // Determine sharing pairs
+        Set<SharingPair> sharingPairs = computeSharingPairs(pointsToGraph);
+
+        // Store results for current method
+        methodCallSharingPairs.put(currentMethodCall, sharingPairs);
+
+        return sharingPairs;
+    }
+
     /**
      * Analyzes the sharing relationships between variables and objects in a JVM
      * state.
@@ -47,9 +131,16 @@ public class SharingPairAnalyzer {
      *         or related memory addresses
      */
     public static Set<SharingPair> analyze(JVMState state) {
-        Map<String, Set<Long>> memoryGraph = buildMemoryGraph(state);
+        if (currentMethodCall == null) {
+            System.out.println("Warning: No current method call set for sharing analysis");
+            return new HashSet<>();
+        }
+        Map<String, Set<Long>> memoryGraph = buildPointsToGraph(state);
 
-        return computeSharingPairs(memoryGraph);
+        Set<SharingPair> sharingPairs = computeSharingPairs(memoryGraph);
+        methodCallSharingPairs.put(currentMethodCall, sharingPairs);
+
+        return sharingPairs;
     }
 
     /**
@@ -74,36 +165,38 @@ public class SharingPairAnalyzer {
      *              analyze
      * @return A map of variable names to sets of memory addresses they reference
      */
-    private static Map<String, Set<Long>> buildMemoryGraph(JVMState state) {
-        Map<String, Set<Long>> memoryGraph = new HashMap<>();
+    public static Map<String, Set<Long>> buildPointsToGraph(JVMState state) {
+        Map<String, Set<Long>> pointsToGraph = new HashMap<>();
 
-        // Build for local variables
+        // Process local variables
         for (int i = 0; i < state.getLocalVariablesSize(); i++) {
             Value value = state.getLocalVariable(i);
-            if (value instanceof LocationValue) {
+            if (value != null && value instanceof LocationValue) {
                 LocationValue locationValue = (LocationValue) value;
                 String varName = "l" + i;
                 long address = locationValue.getAddress();
-                memoryGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
+                pointsToGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
 
-                addReachableObjects(varName, address, memoryGraph, state, new HashSet<>());
+                // Add objects accessible through fields
+                addReachableObjects(varName, address, pointsToGraph, state, new HashSet<>());
             }
         }
 
-        // Build for stack elements
+        // Process stack elements
         for (int i = 0; i < state.getStackSize(); i++) {
             Value value = state.getStackElement(i);
-            if (value instanceof LocationValue) {
+            if (value != null && value instanceof LocationValue) {
                 LocationValue locationValue = (LocationValue) value;
                 String varName = "s" + i;
                 long address = locationValue.getAddress();
-                memoryGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
+                pointsToGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
 
-                addReachableObjects(varName, address, memoryGraph, state, new HashSet<>());
+                // Add objects accessible through fields
+                addReachableObjects(varName, address, pointsToGraph, state, new HashSet<>());
             }
         }
 
-        return memoryGraph;
+        return pointsToGraph;
     }
 
     /**
@@ -128,15 +221,16 @@ public class SharingPairAnalyzer {
         visited.add(address);
 
         Map<String, Value> objectFields = state.getObjectFields(address);
+        if (objectFields != null) {
+            for (String fieldName : objectFields.keySet()) {
+                Value fieldValue = objectFields.get(fieldName);
+                if (fieldValue != null && fieldValue instanceof LocationValue) {
+                    LocationValue locationValue = (LocationValue) fieldValue;
+                    long fieldAddress = locationValue.getAddress();
+                    memoryGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(fieldAddress);
 
-        for (String fieldName : objectFields.keySet()) {
-            Value fieldValue = objectFields.get(fieldName);
-            if (fieldValue instanceof LocationValue) {
-                LocationValue locationValue = (LocationValue) fieldValue;
-                long fieldAddress = locationValue.getAddress();
-                memoryGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(fieldAddress);
-
-                addReachableObjects(varName, fieldAddress, memoryGraph, state, visited);
+                    addReachableObjects(varName, fieldAddress, memoryGraph, state, visited);
+                }
             }
         }
     }
@@ -165,7 +259,6 @@ public class SharingPairAnalyzer {
             }
         }
         return sharingPairs;
-
     }
 
     /**
@@ -191,210 +284,21 @@ public class SharingPairAnalyzer {
     }
 
     /**
-     * Generates a graphical representation of the memory graph in DOT format
-     * and saves the result as a DOT file.
+     * Gets the sharing pairs for a specific method.
      *
-     * This method creates a detailed visualization of the JVM state, including
-     * variables, objects, and their relationships at a specific point during
-     * bytecode instruction execution.
-     *
-     * @param state          The current JVM state to visualize
-     * @param outputPath     The base path where the DOT file will be saved
-     * @param instruction    The current bytecode instruction being analyzed
-     * @param showAllObjects If true, includes all memory objects; if false,
-     *                       only shows accessible objects
-     * @return true if the DOT file generation was successful, false otherwise
+     * @param methodName The name of the method
+     * @return The set of sharing pairs for this method
      */
-    public static boolean generateMemoryGraph(JVMState state, String outputPath, BytecodeInstruction instruction,
-            boolean showAllObjects) {
-        try {
-            // Build the accessibility graph
-            Map<String, Set<Long>> pointsToGraph = buildMemoryGraph(state);
-
-            // Generate DOT content
-            StringBuilder dotContent = new StringBuilder();
-            String dotFilePath = outputPath + ".dot";
-            long timestamp = System.currentTimeMillis();
-
-            // Create DOT file if it doesn't exist
-            File dotFile = new File(dotFilePath);
-            if (!dotFile.exists()) {
-                dotContent.append("digraph MemoryGraph {\n");
-                dotContent.append("  node [shape=box, style=filled, fillcolor=lightblue];\n");
-                dotContent.append("  rankdir=LR;\n\n");
-
-                // Create invisible subgraph as anchor point
-                dotContent.append("  // Invisible anchor subgraph\n");
-                dotContent.append("  subgraph cluster_anchor {\n");
-                dotContent.append("    style=invis;\n");
-                dotContent.append("    anchor [style=invis, shape=point, width=0, height=0];\n");
-                dotContent.append("  }\n\n");
-
-                // Define starting point for ordering
-                dotContent.append("  // Starting point for subgraph ordering\n");
-                dotContent.append("  anchor_start [style=invis, shape=point];\n\n");
-            } else {
-                // Read existing content
-                try (BufferedReader reader = new BufferedReader(new FileReader(dotFile))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (line.equals("}")) {
-                            break;
-                        }
-                        dotContent.append(line).append("\n");
-                    }
-                }
-            }
-
-            // Create anchor node for this subgraph
-            String anchorNodeId = "anchor_" + timestamp;
-            dotContent.append("  ").append(anchorNodeId).append(" [style=invis, shape=point];\n");
-
-            // Add ordering constraint with previous subgraph
-            dotContent.append("  anchor_start -> ").append(anchorNodeId).append(" [style=invis];\n");
-            dotContent.append("  anchor_start = ").append(anchorNodeId).append(";\n\n");
-
-            // Create new subgraph with unique timestamp
-            String subgraphId = "cluster_" + timestamp;
-            dotContent.append("  subgraph ").append(subgraphId).append(" {\n");
-            // Include anchor node in subgraph to maintain order
-            dotContent.append("    ").append(anchorNodeId).append(" [style=invis];\n");
-            dotContent.append("    label=\"").append(instruction.toString()).append("\";\n");
-
-            // Add nodes for variables
-            for (String varName : pointsToGraph.keySet()) {
-                String varLabel = varName.startsWith("l") ? "Local " + varName.substring(1)
-                        : "Stack " + varName.substring(1);
-                String uniqueVarId = varName + "_" + timestamp;
-                String fillColor = varName.startsWith("l") ? "lightgreen" : "lightpink";
-                dotContent.append("    \"").append(uniqueVarId).append("\" [label=\"").append(varLabel)
-                        .append("\", fillcolor=").append(fillColor).append("];\n");
-            }
-
-            if (showAllObjects) {
-                // Add all memory objects
-                Map<LocationValue, JVMObject> memory = state.getMemory();
-                for (Map.Entry<LocationValue, JVMObject> entry : memory.entrySet()) {
-                    LocationValue location = entry.getKey();
-                    JVMObject obj = entry.getValue();
-                    String objLabel = "Object@" + location.getAddress() + "\\n" + obj.getClassTag();
-                    String uniqueObjId = "obj" + location.getAddress() + "_" + timestamp;
-                    dotContent.append("    \"").append(uniqueObjId).append("\" [label=\"").append(objLabel)
-                            .append("\"];\n");
-
-                    // Add object fields
-                    Map<String, Value> fields = obj.getFields();
-                    for (Map.Entry<String, Value> field : fields.entrySet()) {
-                        Value fieldValue = field.getValue();
-                        if (fieldValue != null && fieldValue instanceof LocationValue) {
-                            LocationValue locValue = (LocationValue) fieldValue;
-                            long fieldAddress = locValue.getAddress();
-                            dotContent.append("    \"").append(uniqueObjId).append("\" -> \"obj")
-                                    .append(fieldAddress).append("_").append(timestamp)
-                                    .append("\" [label=\"").append(field.getKey()).append("\"];\n");
-                        }
-                    }
-                }
-            } else {
-                // Add only accessible objects
-                Set<Long> allAddresses = new HashSet<>();
-                for (Set<Long> addresses : pointsToGraph.values()) {
-                    allAddresses.addAll(addresses);
-                }
-
-                for (Long address : allAddresses) {
-                    JVMObject obj = state.getObject(new LocationValue(address));
-                    if (obj != null) {
-                        String objLabel = "Object@" + address + "\\n" + obj.getClassTag();
-                        String uniqueObjId = "obj" + address + "_" + timestamp;
-                        dotContent.append("    \"").append(uniqueObjId).append("\" [label=\"").append(objLabel)
-                                .append("\"];\n");
-
-                        // Add object fields
-                        Map<String, Value> fields = state.getObjectFields(address);
-                        if (fields != null) {
-                            for (Map.Entry<String, Value> field : fields.entrySet()) {
-                                Value fieldValue = field.getValue();
-                                if (fieldValue != null && fieldValue instanceof LocationValue) {
-                                    LocationValue locValue = (LocationValue) fieldValue;
-                                    long fieldAddress = locValue.getAddress();
-                                    dotContent.append("    \"").append(uniqueObjId).append("\" -> \"obj")
-                                            .append(fieldAddress).append("_").append(timestamp)
-                                            .append("\" [label=\"").append(field.getKey()).append("\"];\n");
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add edges between variables and objects
-            for (Map.Entry<String, Set<Long>> entry : pointsToGraph.entrySet()) {
-                String varName = entry.getKey();
-                for (Long address : entry.getValue()) {
-                    Value value = varName.startsWith("l")
-                            ? state.getLocalVariable(Integer.parseInt(varName.substring(1)))
-                            : state.getStackElement(Integer.parseInt(varName.substring(1)));
-
-                    if (value != null && value instanceof LocationValue) {
-                        LocationValue locValue = (LocationValue) value;
-                        if (locValue.getAddress() == address) {
-                            dotContent.append("    \"").append(varName).append("_").append(timestamp)
-                                    .append("\" -> \"obj").append(address).append("_").append(timestamp)
-                                    .append("\";\n");
-                        }
-                    }
-                }
-            }
-
-            // Add section for sharing pairs
-            Set<SharingPair> sharingPairs = computeSharingPairs(pointsToGraph);
-            if (!sharingPairs.isEmpty()) {
-                dotContent.append("\n    // Sharing pairs\n");
-                dotContent.append("    subgraph cluster_sharing_").append(timestamp).append(" {\n");
-                dotContent.append("      label=\"Sharing Pairs\";\n");
-                dotContent.append("      node [shape=ellipse, style=filled, fillcolor=lightyellow];\n");
-
-                int pairId = 0;
-                for (SharingPair pair : sharingPairs) {
-                    String pairNodeId = "pair" + pairId++ + "_" + timestamp;
-                    dotContent.append("      \"").append(pairNodeId).append("\" [label=\"")
-                            .append(pair.getVar1()).append(" ↔ ").append(pair.getVar2()).append("\"];\n");
-                }
-
-                dotContent.append("    }\n");
-            }
-
-            dotContent.append("  }\n");
-
-            // Close main graph
-            dotContent.append("}\n");
-
-            // Write DOT content to file
-            try (java.io.FileWriter writer = new java.io.FileWriter(dotFilePath)) {
-                writer.write(dotContent.toString());
-            }
-
-            // System.out.println("DOT file generated successfully: " + dotFilePath);
-            return true;
-
-        } catch (IOException | NumberFormatException e) {
-            System.err.println("Error generating memory graph: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
+    public static Set<SharingPair> getSharingPairsForMethod(String methodName) {
+        return new HashSet<>(methodCallSharingPairs.getOrDefault(methodName, new HashSet<>()));
     }
 
     /**
-     * Generates a memory graph with default settings.
+     * Gets the sharing pairs for the current method.
      *
-     * @param state       The current JVM state to analyze
-     * @param outputPath  The file path where the memory graph will be saved
-     * @param instruction The bytecode instruction being processed
-     * @return {@code true} if the memory graph is successfully generated,
-     *         {@code false} otherwise
+     * @return The set of sharing pairs for the current method
      */
-    public static boolean generateMemoryGraph(JVMState state, String outputPath, BytecodeInstruction instruction) {
-        return generateMemoryGraph(state, outputPath, instruction, false);
+    public static Set<SharingPair> getCurrentSharingPairs() {
+        return getSharingPairsForMethod(currentMethodCall);
     }
 }
