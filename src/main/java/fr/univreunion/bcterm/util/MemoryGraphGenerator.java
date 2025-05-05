@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
+import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -75,7 +77,7 @@ public class MemoryGraphGenerator {
             addEdgesBetweenObjects(dotContent, state, timestamp, addedObjectAddresses);
 
             if (showAnalysis) {
-                addAnalysisResults(dotContent, timestamp);
+                addAnalysisResults(instruction, dotContent, timestamp, false);
             }
 
             dotContent.append(" }\n");
@@ -218,7 +220,7 @@ public class MemoryGraphGenerator {
         dotContent.append(" color=lightgrey;\n");
         dotContent.append(" node [style=filled, fillcolor=lightyellow];\n");
 
-        boolean hasObjects = false;
+        boolean hasObjects;
         if (showAllObjects) {
             hasObjects = addAllMemoryObjects(dotContent, state, timestamp, addedObjectAddresses);
         } else {
@@ -322,9 +324,8 @@ public class MemoryGraphGenerator {
                 long address = locationValue.getAddress();
 
                 // Ensure the object is added to the graph
-                ensureObjectIsAdded(dotContent, state, timestamp, addedObjectAddresses, address);
+                addObject(dotContent, state, timestamp, addedObjectAddresses, address);
 
-                // Add the edge
                 dotContent.append(" \"l").append(i).append("_").append(timestamp)
                         .append("\" -> \"obj").append(address).append("_").append(timestamp).append("\";\n");
             }
@@ -337,17 +338,15 @@ public class MemoryGraphGenerator {
                 LocationValue locationValue = (LocationValue) value;
                 long address = locationValue.getAddress();
 
-                // Ensure the object is added to the graph
-                ensureObjectIsAdded(dotContent, state, timestamp, addedObjectAddresses, address);
+                addObject(dotContent, state, timestamp, addedObjectAddresses, address);
 
-                // Add the edge
                 dotContent.append(" \"s").append(i).append("_").append(timestamp)
                         .append("\" -> \"obj").append(address).append("_").append(timestamp).append("\";\n");
             }
         }
     }
 
-    private static void ensureObjectIsAdded(StringBuilder dotContent, JVMState state, long timestamp,
+    private static void addObject(StringBuilder dotContent, JVMState state, long timestamp,
             Set<Long> addedObjectAddresses, long address) {
         if (!addedObjectAddresses.contains(address)) {
             JVMObject obj = state.getObject(new LocationValue(address));
@@ -375,10 +374,8 @@ public class MemoryGraphGenerator {
                             LocationValue locationValue = (LocationValue) fieldValue;
                             long fieldAddress = locationValue.getAddress();
 
-                            // Ensure the referenced object is added to the graph
-                            ensureObjectIsAdded(dotContent, state, timestamp, addedObjectAddresses, fieldAddress);
+                            addObject(dotContent, state, timestamp, addedObjectAddresses, fieldAddress);
 
-                            // Add the edge with the field name as label
                             dotContent.append(" \"obj").append(address).append("_").append(timestamp)
                                     .append("\" -> \"obj").append(fieldAddress).append("_").append(timestamp)
                                     .append("\" [label=\"").append(entry.getKey()).append("\"];\n");
@@ -389,14 +386,12 @@ public class MemoryGraphGenerator {
         }
     }
 
-    private static void addAnalysisResults(StringBuilder dotContent, long timestamp) {
-        // Add sharing pairs
-        String sharingNodeId = addSharingPairs(dotContent, timestamp);
+    private static void addAnalysisResults(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
+            boolean finalResult) {
+        String sharingNodeId = addSharingPairs(instruction, dotContent, timestamp, finalResult);
 
-        // For now, we'll just use a placeholder for alias pairs
-        String aliasNodeId = addPlaceholderAliasPairs(dotContent, timestamp);
+        String aliasNodeId = addAliasPairs(instruction, dotContent, timestamp, finalResult);
 
-        // Add an invisible arrow between a sharing node and an alias node for layout
         if (sharingNodeId != null && aliasNodeId != null) {
             dotContent.append(" // Invisible edge for horizontal alignment\n");
             dotContent.append(" \"").append(sharingNodeId).append("\" -> \"")
@@ -404,10 +399,13 @@ public class MemoryGraphGenerator {
         }
     }
 
-    private static String addSharingPairs(StringBuilder dotContent, long timestamp) {
-        Set<SharingPair> sharingPairs = SharingPairAnalyzer.getCurrentSharingPairs();
+    private static String addSharingPairs(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
+            boolean finalResult) {
+        @SuppressWarnings("unchecked")
+        Set<SharingPair> sharingPairs = finalResult ? SharingPairAnalyzer.getCurrentSharingPairs()
+                : (Set<SharingPair>) instruction
+                        .getAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS);
 
-        // Always create the subgraph, even if there are no sharing pairs
         dotContent.append("\n // Sharing pairs\n");
         dotContent.append(" subgraph cluster_sharing_").append(timestamp).append(" {\n");
         dotContent.append(" label=\"Sharing Pairs\";\n");
@@ -423,7 +421,6 @@ public class MemoryGraphGenerator {
                         .append(pair.getVar1()).append(" ↔ ").append(pair.getVar2()).append("\"];\n");
             }
         } else {
-            // Add an invisible node so the subgraph is not empty
             sharingNodeId = "empty_sharing_" + timestamp;
             dotContent.append(" \"").append(sharingNodeId)
                     .append("\" [label=\"No sharing\", style=dashed, fillcolor=white];\n");
@@ -433,17 +430,34 @@ public class MemoryGraphGenerator {
         return sharingNodeId;
     }
 
-    private static String addPlaceholderAliasPairs(StringBuilder dotContent, long timestamp) {
-        // Create a placeholder for alias pairs
-        dotContent.append("\n // Alias pairs (placeholder)\n");
-        dotContent.append(" subgraph cluster_aliases_").append(timestamp).append(" {\n");
-        dotContent.append(" label=\"Definite Aliases\";\n");
-        dotContent.append(" node [shape=ellipse, style=filled, fillcolor=lightcyan];\n");
+    private static String addAliasPairs(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
+            boolean finalResult) {
+        @SuppressWarnings("unchecked")
+        Set<AliasPair> aliasPairs = finalResult ? AliasPairAnalyzer.getDefiniteAliases()
+                : (Set<AliasPair>) instruction
+                        .getAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS);
 
-        String aliasNodeId = "empty_alias_" + timestamp;
-        dotContent.append(" \"").append(aliasNodeId)
-                .append("\" [label=\"No aliases\", style=dashed, fillcolor=white];\n");
-        dotContent.append(" }\n");
+        dotContent.append("\n    // Alias pairs\n");
+        dotContent.append("    subgraph cluster_aliases_").append(timestamp).append(" {\n");
+        dotContent.append("      label=\"Definite Aliases\";\n");
+        dotContent.append("      node [shape=ellipse, style=filled, fillcolor=lightcyan];\n");
+
+        String aliasNodeId = null;
+        if (!aliasPairs.isEmpty()) {
+            int pairId = 0;
+            for (AliasPair pair : aliasPairs) {
+                String pairNodeId = "alias" + pairId + "_" + timestamp;
+                aliasNodeId = pairNodeId;
+                dotContent.append("      \"").append(pairNodeId).append("\" [label=\"")
+                        .append(pair.getVar1()).append(" = ").append(pair.getVar2()).append("\"];\n");
+                pairId++;
+            }
+        } else {
+            aliasNodeId = "empty_alias_" + timestamp;
+            dotContent.append("      \"").append(aliasNodeId)
+                    .append("\" [label=\"No aliases\", style=dashed, fillcolor=white];\n");
+        }
+        dotContent.append("    }\n");
 
         return aliasNodeId;
     }
@@ -469,13 +483,10 @@ public class MemoryGraphGenerator {
     public static boolean generateFinalMemoryGraph(JVMState state, String outputPath,
             boolean showAllObjects, boolean showAnalysis) {
         try {
-            // Build the accessibility graph
             Map<String, Set<Long>> pointsToGraph = SharingPairAnalyzer.buildPointsToGraph(state);
 
-            // Generate DOT content
             StringBuilder dotContent = new StringBuilder();
 
-            // Create generated directory if it doesn't exist
             File generatedDir = new File(Constants.GENERATED_DIR);
             if (!generatedDir.exists()) {
                 generatedDir.mkdirs();
@@ -484,49 +495,37 @@ public class MemoryGraphGenerator {
             String dotFilePath = new File(generatedDir, outputPath + ".dot").getPath();
             long timestamp = System.currentTimeMillis();
 
-            // Initialize the DOT file
             initializeDotFile(dotContent, dotFilePath);
 
-            // Create an anchor node for this subgraph
             String anchorNodeId = createAnchorNode(dotContent, timestamp);
 
-            // Create a new subgraph with unique timestamp
             String subgraphId = "cluster_final_" + timestamp;
             dotContent.append(" subgraph ").append(subgraphId).append(" {\n");
             dotContent.append(" ").append(anchorNodeId).append(" [style=invis];\n");
             dotContent.append(" label=\"Final State\";\n");
-            dotContent.append(" color=red;\n"); // Highlight that this is the final state
+            dotContent.append(" color=red;\n");
             dotContent.append(" penwidth=3;\n");
 
-            // Add local variables
             addLocalVariables(dotContent, state, timestamp);
 
-            // Add stack
             addStack(dotContent, state, timestamp);
 
-            // Set to track addresses of objects already added
             Set<Long> addedObjectAddresses = new HashSet<>();
 
-            // Add memory objects
             addMemoryObjects(dotContent, state, timestamp, showAllObjects, pointsToGraph, addedObjectAddresses);
 
-            // Add edges between variables and objects
             addEdgesFromVariablesToObjects(dotContent, state, timestamp, addedObjectAddresses);
 
-            // Add edges between objects
             addEdgesBetweenObjects(dotContent, state, timestamp, addedObjectAddresses);
 
-            // Add analysis results if requested
             if (showAnalysis) {
-                addAnalysisResults(dotContent, timestamp);
+                addAnalysisResults(null, dotContent, timestamp, true);
             }
 
             dotContent.append(" }\n");
 
-            // Finalize the DOT file
             finalizeDotFile(dotContent, dotFilePath);
 
-            // Write DOT content to file
             try (FileWriter writer = new FileWriter(dotFilePath)) {
                 writer.write(dotContent.toString());
             }

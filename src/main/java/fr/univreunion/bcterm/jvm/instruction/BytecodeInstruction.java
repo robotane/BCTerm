@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
+import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.state.JVMState;
@@ -111,6 +113,7 @@ public abstract class BytecodeInstruction {
      * @return The label string for the given key, or empty string if key is invalid
      *         or has no value
      */
+    @SuppressWarnings("unchecked")
     public String getLabelFor(String key) {
 
         if (!key.equals(Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK) &&
@@ -133,7 +136,7 @@ public abstract class BytecodeInstruction {
             case Constants.ANALYSIS_RESULT_CYCLIC_VARS:
                 return "{}"; // Not implemented yet
             case Constants.ANALYSIS_RESULT_ALIAS_PAIRS:
-                return "{}"; // Not implemented yet
+                return AliasPairAnalyzer.formatForLabel((Set<AliasPair>) value);
             case Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK:
                 StringBuilder builtLabel = new StringBuilder();
                 if (analysisResults.containsKey(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT)) {
