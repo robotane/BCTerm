@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
+import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -107,6 +109,8 @@ public class Method {
         methodCallId = SharingPairAnalyzer.getNextMethodCallId(name);
 
         SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
+        AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
+
         System.out.println("\nExecuting method " + name);
         System.out.println("---------------------------------");
 
@@ -191,11 +195,14 @@ public class Method {
             }
 
             Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
+            Set<AliasPair> definiteAliases = AliasPairAnalyzer.getDefiniteAliases();
+            AliasPairAnalyzer.analyze(instruction, state);
 
-            // Add analysis results to the instruction
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, state.getLocalVariablesSize());
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, state.getStackSize());
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS, sharingPairs);
+
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS, definiteAliases);
 
             String instructionLabel = instruction.getLabel();
             System.out.println(
@@ -221,6 +228,7 @@ public class Method {
 
             if (instruction instanceof CallInstruction) {
                 SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
+                AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
             }
         }
 
@@ -279,24 +287,20 @@ public class Method {
         String cleanedMethodName = cleanString(name);
 
         if (methodIndex < 0) {
-            // Create a digraph
             dot.append("digraph ").append(cleanedMethodName).append(" {\n");
             dot.append("  label=\"").append(name.replace("\"", "\\\"")).append("\";\n");
             dot.append("  node [shape=box];\n");
         } else {
-            // Create a subgraph
             dot.append("  subgraph cluster_").append(methodIndex).append(" {\n");
             dot.append("    label=\"").append(name.replace("\"", "\\\"")).append("\";\n");
             dot.append("    color=black;\n");
             dot.append("    style=rounded;\n");
         }
 
-        // Get the trimmed DOT representation of the CFG
         String cfgDot = cfg.toTrimmedDOT(labelKey);
         String[] lines = cfgDot.split("\n");
         for (String line : lines) {
             String modifiedLine = line.replaceAll("block(\\d+)", cleanedMethodName + "_block$1");
-            // Add appropriate indentation
             dot.append(methodIndex < 0 ? "" : "  ").append(modifiedLine).append("\n");
         }
 
@@ -318,13 +322,11 @@ public class Method {
         String filename = cleanString(name);
 
         try {
-            // Create generated directory if it doesn't exist
             File generatedDir = new File(Constants.GENERATED_DIR);
             if (!generatedDir.exists()) {
                 generatedDir.mkdirs();
             }
 
-            // Write DOT content to a file
             File dotFile = new File(generatedDir, filename + Constants.DOT_FILE_EXTENSION);
             File outputFile = new File(generatedDir, filename + "." + extension);
 
@@ -335,7 +337,6 @@ public class Method {
                 System.err.println("Error generating dot file: " + e.getMessage());
             }
 
-            // Generate output using dot command
             ProcessBuilder pb = new ProcessBuilder(
                     Constants.DOT_COMMAND,
                     Constants.DOT_TYPE_FLAG_PREFIX + extension,

@@ -32,4 +32,8 @@ public class LoadInstruction extends BytecodeInstruction {
     public String toString() {
         return "load " + index;
     }
+
+    public int getIndex() {
+        return index;
+    }
 }

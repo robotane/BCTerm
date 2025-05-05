@@ -34,4 +34,8 @@ public class StoreInstruction extends BytecodeInstruction {
         return "store " + index;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
 }

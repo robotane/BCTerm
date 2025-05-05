@@ -215,7 +215,7 @@ public class CallInstruction extends BytecodeInstruction {
      * @return A map containing "parameters" (List<String>) and "returnType"
      *         (String)
      */
-    private Map<String, Object> parseSignature(String signature) {
+    public Map<String, Object> parseSignature(String signature) {
         Map<String, Object> result = new HashMap<>();
         List<String> parameters = new ArrayList<>();
 
@@ -265,5 +265,19 @@ public class CallInstruction extends BytecodeInstruction {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Returns the number of parameters in the method signature.
+     *
+     * @return the count of parameters parsed from the method signature
+     */
+    public int getParameterCount() {
+        Map<String, Object> signatureInfo = parseSignature(this.signature);
+
+        @SuppressWarnings("unchecked")
+        List<String> parameters = (List<String>) signatureInfo.get("parameters");
+
+        return parameters.size();
     }
 }
