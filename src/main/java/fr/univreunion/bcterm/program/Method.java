@@ -11,6 +11,8 @@ import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -108,8 +110,10 @@ public class Method {
     public Set<JVMState> execute(JVMState initialState) {
         methodCallId = SharingPairAnalyzer.getNextMethodCallId(name);
 
+        // Pass the method call ID to the analyzers
         SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
         AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
+        CyclicVariableAnalyzer.setCurrentMethodCall(methodCallId);
 
         System.out.println("\nExecuting method " + name);
         System.out.println("---------------------------------");
@@ -196,13 +200,13 @@ public class Method {
 
             Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
             Set<AliasPair> definiteAliases = AliasPairAnalyzer.getDefiniteAliases();
-            AliasPairAnalyzer.analyze(instruction, state);
+            Set<CyclicVariable> cyclicVars = CyclicVariableAnalyzer.analyze(state);
 
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, state.getLocalVariablesSize());
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, state.getStackSize());
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS, sharingPairs);
-
             instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS, definiteAliases);
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS, cyclicVars);
 
             String instructionLabel = instruction.getLabel();
             System.out.println(
@@ -229,6 +233,7 @@ public class Method {
             if (instruction instanceof CallInstruction) {
                 SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
                 AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
+                CyclicVariableAnalyzer.setCurrentMethodCall(methodCallId);
             }
             AliasPairAnalyzer.analyze(instruction, state);
         }

@@ -11,6 +11,8 @@ import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -392,10 +394,18 @@ public class MemoryGraphGenerator {
 
         String aliasNodeId = addAliasPairs(instruction, dotContent, timestamp, finalResult);
 
+        String cyclicNodeId = addCyclicVariables(instruction, dotContent, timestamp, finalResult);
+
         if (sharingNodeId != null && aliasNodeId != null) {
             dotContent.append(" // Invisible edge for horizontal alignment\n");
             dotContent.append(" \"").append(sharingNodeId).append("\" -> \"")
                     .append(aliasNodeId).append("\" [style=invis, weight=10];\n");
+        }
+
+        if (aliasNodeId != null && cyclicNodeId != null) {
+            dotContent.append(" // Invisible edge for horizontal alignment\n");
+            dotContent.append(" \"").append(aliasNodeId).append("\" -> \"")
+                    .append(cyclicNodeId).append("\" [style=invis, weight=10];\n");
         }
     }
 
@@ -412,7 +422,7 @@ public class MemoryGraphGenerator {
         dotContent.append(" node [shape=ellipse, style=filled, fillcolor=lightyellow];\n");
 
         String sharingNodeId = null;
-        if (!sharingPairs.isEmpty()) {
+        if (sharingPairs != null && !sharingPairs.isEmpty()) {
             int pairId = 0;
             for (SharingPair pair : sharingPairs) {
                 String pairNodeId = "pair" + pairId++ + "_" + timestamp;
@@ -443,7 +453,7 @@ public class MemoryGraphGenerator {
         dotContent.append("      node [shape=ellipse, style=filled, fillcolor=lightcyan];\n");
 
         String aliasNodeId = null;
-        if (!aliasPairs.isEmpty()) {
+        if (aliasPairs != null && !aliasPairs.isEmpty()) {
             int pairId = 0;
             for (AliasPair pair : aliasPairs) {
                 String pairNodeId = "alias" + pairId + "_" + timestamp;
@@ -460,6 +470,47 @@ public class MemoryGraphGenerator {
         dotContent.append("    }\n");
 
         return aliasNodeId;
+    }
+
+    private static String addCyclicVariables(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
+            boolean finalResult) {
+        @SuppressWarnings("unchecked")
+        Set<CyclicVariable> cyclicVars = finalResult ? CyclicVariableAnalyzer.getCyclicVariables()
+                : (Set<CyclicVariable>) instruction.getAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS);
+
+        dotContent.append("\n // Cyclic variables\n");
+        dotContent.append(" subgraph cluster_cyclic_").append(timestamp).append(" {\n");
+        dotContent.append(" label=\"Cyclic Variables\";\n");
+        dotContent.append(" node [shape=ellipse];\n");
+
+        String cyclicNodeId = null;
+        if (cyclicVars != null && !cyclicVars.isEmpty()) {
+            int varId = 0;
+            for (CyclicVariable var : cyclicVars) {
+                String varNodeId = "cyclic" + varId++ + "_" + timestamp;
+                cyclicNodeId = varNodeId;
+
+                // Determine color based on variable name prefix
+                String varName = var.getVariableName();
+                String fillColor = "white"; // Default color
+
+                if (varName.startsWith("l")) {
+                    fillColor = "lightgreen"; // Local variable color
+                } else if (varName.startsWith("s")) {
+                    fillColor = "lightpink"; // Stack variable color
+                }
+
+                dotContent.append(" \"").append(varNodeId).append("\" [label=\"")
+                        .append(varName).append("\", style=filled, fillcolor=").append(fillColor).append("];\n");
+            }
+        } else {
+            cyclicNodeId = "empty_cyclic_" + timestamp;
+            dotContent.append(" \"").append(cyclicNodeId)
+                    .append("\" [label=\"No cycle\", style=dashed, fillcolor=white];\n");
+        }
+        dotContent.append(" }\n");
+
+        return cyclicNodeId;
     }
 
     private static void finalizeDotFile(StringBuilder dotContent, String dotFilePath) throws IOException {

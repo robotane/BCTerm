@@ -43,8 +43,12 @@ public class SharingProgramExample {
         CFG mainTermCfg = createMainTermCFG();
         program.addMethod("main_term", "(String[]):void", mainTermCfg);
 
+        // Add the "main_cycle" method
+        CFG mainCycleCfg = createMainCycleCFG();
+        program.addMethod("main_cycle", mainCycleCfg);
+
         // Set the main method
-        program.setMainMethodName("main_term");
+        program.setMainMethodName("main_cycle");
 
         return program;
     }
@@ -186,6 +190,86 @@ public class SharingProgramExample {
 
         // Block 7: call Sharing.expand(Sharing):void
         List<BytecodeInstruction> block7Instructions = new ArrayList<>();
+        block7Instructions.add(new CallInstruction("Sharing.expand(Sharing):void"));
+        BasicBlock bb7 = new BasicBlock(7, block7Instructions);
+
+        // Add blocks to CFG
+        cfg.addBlock(bb1);
+        cfg.addBlock(bb2);
+        cfg.addBlock(bb3);
+        cfg.addBlock(bb4);
+        cfg.addBlock(bb5);
+        cfg.addBlock(bb6);
+        cfg.addBlock(bb7);
+
+        // Add edges to CFG
+        cfg.addEdge(bb1, bb2);
+        cfg.addEdge(bb2, bb3);
+        cfg.addEdge(bb3, bb4);
+        cfg.addEdge(bb4, bb5);
+        cfg.addEdge(bb5, bb6);
+        cfg.addEdge(bb6, bb7);
+
+        return cfg;
+    }
+
+    private static CFG createMainCycleCFG() {
+        // Create CFG for "main_cycle"
+        CFG cfg = new CFG();
+
+        // Block 1: new Sharing, dup, new Sharing, dup, new Sharing, dup, const null
+        List<BytecodeInstruction> block1Instructions = new ArrayList<>();
+        block1Instructions.add(new NewInstruction("Sharing"));
+        block1Instructions.add(new DupInstruction());
+        block1Instructions.add(new NewInstruction("Sharing"));
+        block1Instructions.add(new DupInstruction());
+        block1Instructions.add(new NewInstruction("Sharing"));
+        block1Instructions.add(new DupInstruction());
+        block1Instructions.add(new ConstInstruction()); // null
+        BasicBlock bb1 = new BasicBlock(1, block1Instructions);
+
+        // Block 2: call Sharing.<init>(Sharing):void
+        List<BytecodeInstruction> block2Instructions = new ArrayList<>();
+        block2Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        BasicBlock bb2 = new BasicBlock(2, block2Instructions);
+
+        // Block 3: call Sharing.<init>(Sharing):void
+        List<BytecodeInstruction> block3Instructions = new ArrayList<>();
+        block3Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        BasicBlock bb3 = new BasicBlock(3, block3Instructions);
+
+        // Block 4: call Sharing.<init>(Sharing):void, store 1, new Sharing, dup, new
+        // Sharing, dup, const null
+        List<BytecodeInstruction> block4Instructions = new ArrayList<>();
+        block4Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        block4Instructions.add(new StoreInstruction(1));
+        block4Instructions.add(new NewInstruction("Sharing"));
+        block4Instructions.add(new DupInstruction());
+        block4Instructions.add(new NewInstruction("Sharing"));
+        block4Instructions.add(new DupInstruction());
+        block4Instructions.add(new ConstInstruction()); // null
+        BasicBlock bb4 = new BasicBlock(4, block4Instructions);
+
+        // Block 5: call Sharing.<init>(Sharing):void
+        List<BytecodeInstruction> block5Instructions = new ArrayList<>();
+        block5Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        BasicBlock bb5 = new BasicBlock(5, block5Instructions);
+
+        // Block 6: call Sharing.<init>(Sharing):void, store 2, load 2, getfield next,
+        // load 2, putfield next
+        List<BytecodeInstruction> block6Instructions = new ArrayList<>();
+        block6Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        block6Instructions.add(new StoreInstruction(2));
+        block6Instructions.add(new LoadInstruction(2));
+        block6Instructions.add(new GetFieldInstruction("next"));
+        block6Instructions.add(new LoadInstruction(2));
+        block6Instructions.add(new PutFieldInstruction("next"));
+        BasicBlock bb6 = new BasicBlock(6, block6Instructions);
+
+        // Block 7: load 1, load 2, call Sharing.expand(Sharing):void
+        List<BytecodeInstruction> block7Instructions = new ArrayList<>();
+        block7Instructions.add(new LoadInstruction(1));
+        block7Instructions.add(new LoadInstruction(2));
         block7Instructions.add(new CallInstruction("Sharing.expand(Sharing):void"));
         BasicBlock bb7 = new BasicBlock(7, block7Instructions);
 

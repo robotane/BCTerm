@@ -1,11 +1,14 @@
 package fr.univreunion.bcterm.jvm.instruction;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.state.JVMState;
@@ -134,7 +137,7 @@ public abstract class BytecodeInstruction {
             case Constants.ANALYSIS_RESULT_SHARING_PAIRS:
                 return SharingPairAnalyzer.formatForLabel((Set<SharingPair>) value);
             case Constants.ANALYSIS_RESULT_CYCLIC_VARS:
-                return "{}"; // Not implemented yet
+                return CyclicVariableAnalyzer.formatForLabel((Set<CyclicVariable>) value);
             case Constants.ANALYSIS_RESULT_ALIAS_PAIRS:
                 return AliasPairAnalyzer.formatForLabel((Set<AliasPair>) value);
             case Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK:
