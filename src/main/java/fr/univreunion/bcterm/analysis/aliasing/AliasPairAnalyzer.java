@@ -57,6 +57,7 @@ public class AliasPairAnalyzer {
 
         Set<AliasPair> aliases = methodCallAliases.get(currentMethodCall);
         aliases.add(new AliasPair(var1, var2));
+        computeTransitiveClosure();
     }
 
     private static void removeAliasesFor(String var) {
@@ -66,6 +67,54 @@ public class AliasPairAnalyzer {
 
         Set<AliasPair> aliases = methodCallAliases.get(currentMethodCall);
         aliases.removeIf(pair -> pair.getVar1().equals(var) || pair.getVar2().equals(var));
+    }
+
+    private static void computeTransitiveClosure() {
+        if (currentMethodCall == null) {
+            System.out.println("Warning: No current method set for alias analysis");
+            return;
+        }
+
+        Set<AliasPair> aliases = getCurrentMethodCallAliases();
+        Set<AliasPair> newAliases = new HashSet<>();
+        boolean changed;
+
+        do {
+            changed = false;
+            for (AliasPair pair1 : aliases) {
+                for (AliasPair pair2 : aliases) {
+                    AliasPair newPair = null;
+
+                    // Case 1: (a,b) and (b,c) -> (a,c)
+                    if (pair1.getVar2().equals(pair2.getVar1())) {
+                        newPair = new AliasPair(pair1.getVar1(), pair2.getVar2());
+                    }
+
+                    // Case 2: (a,b) and (c,b) -> (a,c)
+                    else if (pair1.getVar2().equals(pair2.getVar2())) {
+                        newPair = new AliasPair(pair1.getVar1(), pair2.getVar1());
+                    }
+
+                    // Case 3: (b,a) and (b,c) -> (a,c)
+                    else if (pair1.getVar1().equals(pair2.getVar1())) {
+                        newPair = new AliasPair(pair1.getVar2(), pair2.getVar2());
+                    }
+
+                    // Case 4: (b,a) and (c,b) -> (c,a)
+                    else if (pair1.getVar1().equals(pair2.getVar2())) {
+                        newPair = new AliasPair(pair1.getVar2(), pair2.getVar1());
+                    }
+
+                    if (newPair != null && !aliases.contains(newPair) && !newPair.getVar1().equals(newPair.getVar2())) {
+                        newAliases.add(newPair);
+                        changed = true;
+                    }
+                }
+            }
+
+            aliases.addAll(newAliases);
+            newAliases.clear();
+        } while (changed);
     }
 
     public static String formatForLabel(Set<AliasPair> aliasPairs) {
@@ -92,16 +141,17 @@ public class AliasPairAnalyzer {
         // System.out.println("Before analysis: " +
         // formatForLabel(getDefiniteAliases()));
 
-        // 1. Instructions that mainly add aliases
+        // Instructions that mainly add aliases
         if (instruction instanceof LoadInstruction) {
             handleLoadInstruction((LoadInstruction) instruction, state);
         } else if (instruction instanceof DupInstruction) {
             handleDupInstruction((DupInstruction) instruction, state);
-        }
-        // 2. Instructions that mainly remove aliases
-        else if (instruction instanceof StoreInstruction) {
+        } else if (instruction instanceof StoreInstruction) {
             handleStoreInstruction((StoreInstruction) instruction, state);
-        } else if (instruction instanceof GetFieldInstruction) {
+        }
+
+        // Instructions that mainly remove aliases
+        else if (instruction instanceof GetFieldInstruction) {
             handleGetFieldInstruction((GetFieldInstruction) instruction, state);
         } else if (instruction instanceof PutFieldInstruction) {
             handlePutFieldInstruction((PutFieldInstruction) instruction, state);
@@ -124,13 +174,8 @@ public class AliasPairAnalyzer {
     }
 
     private static void handleLoadInstruction(LoadInstruction loadInst, JVMState state) {
-        if (state.getStackSize() < 0) {
-            System.err.println("Warning: Not enough elements on stack for load instruction analysis");
-            return;
-        }
-
         int localIndex = loadInst.getIndex();
-        int futureStackIndex = state.getStackSize();
+        int futureStackIndex = state.getStackSize() - 1;
         String localVar = "l" + localIndex;
         String futureStackVar = "s" + futureStackIndex;
 
@@ -138,25 +183,18 @@ public class AliasPairAnalyzer {
     }
 
     private static void handleStoreInstruction(StoreInstruction storeInst, JVMState state) {
-        if (state.getStackSize() <= 0) {
-            System.err.println("Warning: Not enough elements on stack for store instruction analysis");
-            return;
-        }
-
-        int currentStackIndex = state.getStackSize() - 1;
+        int currentStackIndex = state.getStackSize();
         String currentStackVar = "s" + currentStackIndex;
+        int localIndex = storeInst.getIndex();
+        String localVar = "l" + localIndex;
+        addDefiniteAlias(currentStackVar, localVar);
 
         removeAliasesFor(currentStackVar);
     }
 
     private static void handleDupInstruction(DupInstruction dupInst, JVMState state) {
-        if (state.getStackSize() <= 0) {
-            System.err.println("Warning: Not enough elements on stack for dup instruction analysis");
-            return;
-        }
-
-        int currentStackIndex = state.getStackSize() - 1;
-        int futureStackIndex = state.getStackSize();
+        int currentStackIndex = state.getStackSize() - 2;
+        int futureStackIndex = state.getStackSize() - 1;
         String currentStackVar = "s" + currentStackIndex;
         String futureStackVar = "s" + futureStackIndex;
 
@@ -164,38 +202,23 @@ public class AliasPairAnalyzer {
     }
 
     private static void handleGetFieldInstruction(GetFieldInstruction getFieldInst, JVMState state) {
-        if (state.getStackSize() <= 0) {
-            System.err.println("Warning: Not enough elements on stack for getfield instruction analysis");
-            return;
-        }
-
         String stackVar = "s" + (state.getStackSize() - 1);
 
         removeAliasesFor(stackVar);
     }
 
     private static void handlePutFieldInstruction(PutFieldInstruction putFieldInst, JVMState state) {
-        if (state.getStackSize() < 2) {
-            System.err.println("Warning: Not enough elements on stack for putfield instruction analysis");
-            return;
-        }
-
-        String objectRef = "s" + (state.getStackSize() - 2);
-        String value = "s" + (state.getStackSize() - 1);
+        String objectRef = "s" + (state.getStackSize() - 1);
+        String value = "s" + (state.getStackSize());
         removeAliasesFor(objectRef);
         removeAliasesFor(value);
     }
 
     private static void handleAddInstruction(AddInstruction addInst, JVMState state) {
-        if (state.getStackSize() < 2) {
-            System.err.println("Warning: Not enough elements on stack for add instruction analysis");
-            return;
-        }
-
-        String resultVar = "s" + (state.getStackSize() - 2);
+        String resultVar = "s" + (state.getStackSize() - 1);
         removeAliasesFor(resultVar);
 
-        String topVar = "s" + (state.getStackSize() - 1);
+        String topVar = "s" + (state.getStackSize());
         removeAliasesFor(topVar);
     }
 
@@ -208,23 +231,13 @@ public class AliasPairAnalyzer {
     }
 
     private static void handleIfEqOfTypeInstruction(IfEqOfTypeInstruction ifEqInst, JVMState state) {
-        if (state.getStackSize() <= 0) {
-            System.err.println("Warning: Not enough elements on stack for ifeq of type instruction analysis");
-            return;
-        }
-
-        String topStackVar = "s" + (state.getStackSize() - 1);
+        String topStackVar = "s" + (state.getStackSize());
 
         removeAliasesFor(topStackVar);
     }
 
     private static void handleIfNeOfTypeInstruction(IfNeOfTypeInstruction ifNeInst, JVMState state) {
-        if (state.getStackSize() <= 0) {
-            System.err.println("Warning: Not enough elements on stack for ifne of type instruction analysis");
-            return;
-        }
-
-        String topStackVar = "s" + (state.getStackSize() - 1);
+        String topStackVar = "s" + (state.getStackSize());
 
         removeAliasesFor(topStackVar);
     }
@@ -232,17 +245,10 @@ public class AliasPairAnalyzer {
     private static void handleCallInstruction(CallInstruction callInst, JVMState state) {
         int paramCount = callInst.getParameterCount();
 
-        if (state.getStackSize() < paramCount + 1) {
-            System.err.println("Warning: Not enough elements on stack for call instruction analysis");
-            return;
-        }
-
         for (int i = 0; i < paramCount + 1; i++) {
-            int stackIndex = state.getStackSize() - 1 - i;
+            int stackIndex = state.getStackSize() + i;
             String stackVar = "s" + stackIndex;
             removeAliasesFor(stackVar);
         }
-
     }
-
 }

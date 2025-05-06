@@ -230,6 +230,7 @@ public class Method {
                 SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
                 AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
             }
+            AliasPairAnalyzer.analyze(instruction, state);
         }
 
         return state;
