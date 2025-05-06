@@ -138,7 +138,7 @@ public class Method {
 
             if (Constants.ENABLE_FILE_GENERATION) {
                 MemoryGraphGenerator.generateFinalMemoryGraph(new JVMState(currentState), memoryGraphPath,
-                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, false);
             }
             return;
         }
@@ -163,7 +163,7 @@ public class Method {
 
             if (Constants.ENABLE_FILE_GENERATION) {
                 MemoryGraphGenerator.generateFinalMemoryGraph(stateAfterBlock, memoryGraphPath,
-                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, false);
             }
         } else {
             // Execute recursively for each successor
