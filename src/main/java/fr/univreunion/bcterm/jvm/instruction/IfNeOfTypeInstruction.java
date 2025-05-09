@@ -27,25 +27,20 @@ public class IfNeOfTypeInstruction extends BytecodeInstruction {
     @Override
     public boolean execute(JVMState state) {
         if (state.getStackSize() > 0) {
-            // Get the top value without removing it first
             Value value = state.peekStack();
 
             boolean conditionMet;
             if (expectedValue instanceof IntegerValue) {
-                // Check if value is an integer and not equals 0
                 conditionMet = value instanceof IntegerValue &&
                         ((IntegerValue) value).getValue() != 0;
             } else {
-                // Check if value is not null
                 conditionMet = !(value instanceof NullValue);
             }
 
-            // Only pop the stack if the condition is met
             if (conditionMet) {
                 state.popStack();
                 return true;
             } else {
-                // Don't modify the stack if the condition is not met
                 return false;
             }
         }

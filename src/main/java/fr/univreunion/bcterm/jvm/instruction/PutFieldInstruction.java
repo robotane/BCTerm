@@ -33,12 +33,10 @@ public class PutFieldInstruction extends BytecodeInstruction {
             Value v = state.getStackElement(state.getStackSize() - 1); // Value to store
             Value l = state.getStackElement(state.getStackSize() - 2); // Object reference
 
-            // Check if l is null
             if (l instanceof NullValue) {
-                return false; // Null pointer exception, stop computation
+                return false;
             }
 
-            // Check if l is a LocationValue
             if (l instanceof LocationValue) {
                 LocationValue locationValue = (LocationValue) l;
                 JVMObject object = state.getObject(locationValue);

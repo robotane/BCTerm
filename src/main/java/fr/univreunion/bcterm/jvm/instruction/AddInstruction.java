@@ -22,14 +22,11 @@ public class AddInstruction extends BytecodeInstruction {
             Integer int1 = (Integer) value1.getValue();
             Integer int2 = (Integer) value2.getValue();
 
-            // Calculate the sum
             Integer sum = int1 + int2;
 
-            // Push the result back onto the stack
             state.pushStack(new IntegerValue(sum));
             return true;
         } else {
-            // If the values are not integers, push the values back in reverse order
             state.pushStack(value1);
             state.pushStack(value2);
             return false;

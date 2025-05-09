@@ -21,13 +21,10 @@ public class NewInstruction extends BytecodeInstruction {
 
     @Override
     public boolean execute(JVMState state) {
-        // Create a new object
         JVMObject newObject = new JVMObject(className);
 
-        // Allocate it in memory with a new location
         LocationValue location = state.allocateNewObject(newObject);
 
-        // Push the location on the stack
         state.pushStack(location);
         return true;
     }

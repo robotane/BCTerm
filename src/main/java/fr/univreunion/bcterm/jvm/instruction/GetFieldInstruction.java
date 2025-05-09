@@ -28,12 +28,10 @@ public class GetFieldInstruction extends BytecodeInstruction {
         if (state.getStackSize() > 0) {
             Value value = state.peekStack();
 
-            // Check if value is null
             if (value instanceof NullValue) {
-                return false; // Stop execution
+                return false;
             }
 
-            // Check if value is a LocationValue
             if (value instanceof LocationValue) {
                 LocationValue LocationValue = (LocationValue) value.getValue();
                 JVMObject object = state.getObject(LocationValue);

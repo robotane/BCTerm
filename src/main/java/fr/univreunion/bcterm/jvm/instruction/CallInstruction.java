@@ -51,8 +51,6 @@ public class CallInstruction extends BytecodeInstruction {
     public CallInstruction(String callString) {
         implementationClasses = new ArrayList<>();
 
-        // We need to parse implementations carefully since commas can appear both as
-        // implementation separators and within parameter lists
         List<String> implementations = parseImplementations(callString);
 
         for (String impl : implementations) {
@@ -65,7 +63,6 @@ public class CallInstruction extends BytecodeInstruction {
                 continue;
             }
 
-            // Extract the class and add it to the list
             String currentClass = impl.substring(0, dotIndex);
             implementationClasses.add(currentClass);
 
@@ -128,41 +125,34 @@ public class CallInstruction extends BytecodeInstruction {
 
     @Override
     public boolean execute(JVMState initialState) {
-        // Check if the program has been defined
         if (program == null) {
             System.out.println("Error: Program not defined for CallInstruction");
             return false;
         }
 
-        // Use parseSignature instead of getParametersStrings
         Map<String, Object> signatureInfo = parseSignature(this.signature);
         @SuppressWarnings("unchecked")
         List<String> parameters = (List<String>) signatureInfo.get("parameters");
         int paramCount = parameters.size();
 
-        // Check if there are enough values on the stack
         if (initialState.getStackSize() < paramCount + 1) {
             System.out.println("Error: Not enough parameters on stack");
             return false;
         }
 
-        // Extract parameters from stack (in reverse order)
         Value[] paramValues = new Value[paramCount + 1];
         for (int i = paramCount; i >= 0; i--) {
             paramValues[i] = initialState.popStack();
         }
 
-        // Check if receiver is null
         if (paramValues[0] == Value.NULL) {
             System.out.println("Error: Null receiver for method call");
             return false;
         }
 
-        // Check if method exists in program with matching signature
         boolean methodFound = false;
         for (String methName : program.getMethodNames()) {
             if (methName.equals(this.methodName)) {
-                // Get the method object to check its signature
                 Method method = program.getMethod(methName);
                 if (method != null && method.getSignature().equals(this.signature)) {
                     methodFound = true;
@@ -176,19 +166,14 @@ public class CallInstruction extends BytecodeInstruction {
             return false;
         }
 
-        // Create new JVM state for method execution which shares the same memory as the
-        // initial state
         JVMState methodState = new JVMState(initialState.getMemory());
 
-        // Set local variables to parameters
         for (int i = 0; i <= paramCount; i++) {
             methodState.setLocalVariable(i, paramValues[i]);
         }
 
-        // Execute method
         Set<JVMState> finalStates = program.execute(this.methodName, methodState);
 
-        // If execution succeeded and produced final states
         if (finalStates != null && !finalStates.isEmpty()) {
             JVMState finalState = finalStates.iterator().next();
 
