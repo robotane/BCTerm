@@ -117,9 +117,7 @@ public class AliasPairAnalyzer {
         String stackVar = "s" + currentState.getStackSize();
 
         currentState.pushToStack(stackVar);
-        if (!localVar.equals(stackVar)) {
-            currentState.addAliasPair(localVar, stackVar);
-        }
+        currentState.addAliasPair(localVar, stackVar);
     }
 
     private static void handleStoreInstruction(StoreInstruction storeInst) {
@@ -127,9 +125,7 @@ public class AliasPairAnalyzer {
         String localVar = "l" + localIndex;
         String stackVar = currentState.popFromStack();
 
-        if (!stackVar.equals(localVar)) {
-            currentState.addAliasPair(stackVar, localVar);
-        }
+        currentState.addAliasPair(stackVar, localVar);
 
         currentState.removeAliasesFor(stackVar);
     }
@@ -140,9 +136,7 @@ public class AliasPairAnalyzer {
 
         currentState.pushToStack(newStackVar);
 
-        if (!topVar.equals(newStackVar)) {
-            currentState.addAliasPair(topVar, newStackVar);
-        }
+        currentState.addAliasPair(topVar, newStackVar);
     }
 
     private static void handleGetFieldInstruction(GetFieldInstruction getFieldInst) {
