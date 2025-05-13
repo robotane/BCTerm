@@ -197,8 +197,7 @@ public class Method {
             if (instruction == null) {
                 continue;
             }
-
-            Set<SharingPair> sharingPairs = SharingPairAnalyzer.analyze(state);
+            Set<SharingPair> sharingPairs = SharingPairAnalyzer.getSharingPairs();
             Set<AliasPair> definiteAliases = AliasPairAnalyzer.getDefiniteAliases();
             Set<CyclicVariable> cyclicVars = CyclicVariableAnalyzer.analyze(state);
 
@@ -235,7 +234,8 @@ public class Method {
                 AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
                 CyclicVariableAnalyzer.setCurrentMethodCall(methodCallId);
             }
-            AliasPairAnalyzer.analyze(instruction, state);
+            AliasPairAnalyzer.analyze(instruction);
+            SharingPairAnalyzer.analyze(instruction);
         }
 
         return state;

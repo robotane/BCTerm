@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -44,7 +45,7 @@ public class MemoryGraphGenerator {
     public static boolean generateMemoryGraph(JVMState state, String outputPath, BytecodeInstruction instruction,
             boolean showAllObjects, boolean showAnalysis) {
         try {
-            Map<String, Set<Long>> pointsToGraph = SharingPairAnalyzer.buildPointsToGraph(state);
+            Map<String, Set<Long>> pointsToGraph = buildPointsToGraph(state);
 
             StringBuilder dotContent = new StringBuilder();
 
@@ -96,6 +97,98 @@ public class MemoryGraphGenerator {
             System.err.println("Error generating memory graph: " + e.getMessage());
             e.printStackTrace();
             return false;
+        }
+    }
+
+    /**
+     * Constructs a memory graph by mapping variables to their memory addresses.
+     * 
+     * Traverses local variables and stack elements, identifying location values
+     * and building a graph that tracks the memory addresses each variable can
+     * reach.
+     * 
+     * Example:
+     * For a JVM state with:
+     * - Local variable l0 pointing to address 1, which has a field pointing to
+     * address 2
+     * - Stack element s0 pointing to address 3
+     * The resulting graph would be:
+     * {
+     * "l0" -> {1, 2},
+     * "s0" -> {3}
+     * }
+     * 
+     * @param state The JVM state containing local variables and stack elements to
+     *              analyze
+     * @return A map of variable names to sets of memory addresses they reference
+     */
+    private static Map<String, Set<Long>> buildPointsToGraph(JVMState state) {
+        Map<String, Set<Long>> pointsToGraph = new HashMap<>();
+
+        // Process local variables
+        for (int i = 0; i < state.getLocalVariablesSize(); i++) {
+            Value value = state.getLocalVariable(i);
+            if (value != null && value instanceof LocationValue) {
+                LocationValue locationValue = (LocationValue) value;
+                String varName = "l" + i;
+                long address = locationValue.getAddress();
+                pointsToGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
+
+                // Add objects accessible through fields
+                addReachableObjects(varName, address, pointsToGraph, state, new HashSet<>());
+            }
+        }
+
+        // Process stack elements
+        for (int i = 0; i < state.getStackSize(); i++) {
+            Value value = state.getStackElement(i);
+            if (value != null && value instanceof LocationValue) {
+                LocationValue locationValue = (LocationValue) value;
+                String varName = "s" + i;
+                long address = locationValue.getAddress();
+                pointsToGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
+
+                // Add objects accessible through fields
+                addReachableObjects(varName, address, pointsToGraph, state, new HashSet<>());
+            }
+        }
+
+        return pointsToGraph;
+    }
+
+    /**
+     * Recursively explores and tracks reachable memory objects from a given
+     * address.
+     *
+     * @param varName     The name of the variable being analyzed
+     * @param address     The starting memory address to explore
+     * @param memoryGraph A mapping of variable names to their reachable object
+     *                    addresses
+     * @param state       The current JVM state containing object field
+     *                    information
+     * @param visited     A set of already visited memory addresses to prevent
+     *                    infinite recursion
+     */
+    private static void addReachableObjects(String varName, long address,
+            Map<String, Set<Long>> memoryGraph, JVMState state,
+            Set<Long> visited) {
+        if (visited.contains(address)) {
+            return;
+        }
+        visited.add(address);
+
+        Map<String, Value> objectFields = state.getObjectFields(address);
+        if (objectFields != null) {
+            for (String fieldName : objectFields.keySet()) {
+                Value fieldValue = objectFields.get(fieldName);
+                if (fieldValue != null && fieldValue instanceof LocationValue) {
+                    LocationValue locationValue = (LocationValue) fieldValue;
+                    long fieldAddress = locationValue.getAddress();
+                    memoryGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(fieldAddress);
+
+                    addReachableObjects(varName, fieldAddress, memoryGraph, state, visited);
+                }
+            }
         }
     }
 
@@ -534,7 +627,7 @@ public class MemoryGraphGenerator {
     public static boolean generateFinalMemoryGraph(JVMState state, String outputPath,
             boolean showAllObjects, boolean showAnalysis) {
         try {
-            Map<String, Set<Long>> pointsToGraph = SharingPairAnalyzer.buildPointsToGraph(state);
+            Map<String, Set<Long>> pointsToGraph = buildPointsToGraph(state);
 
             StringBuilder dotContent = new StringBuilder();
 

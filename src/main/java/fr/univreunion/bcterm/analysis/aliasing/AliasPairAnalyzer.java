@@ -17,17 +17,31 @@ import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
 import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
 import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
 import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
-import fr.univreunion.bcterm.jvm.state.JVMState;
 
+/**
+ * Analyzer for tracking and managing alias relationships between variables
+ * during bytecode analysis.
+ * 
+ * This class provides static methods to track aliasing states across method
+ * calls,
+ * analyze bytecode instructions for potential alias changes, and query alias
+ * relationships.
+ * 
+ * The analyzer maintains a mapping of method calls to their current aliasing
+ * states,
+ * allowing for precise tracking of variable aliases during bytecode
+ * interpretation.
+ */
 public class AliasPairAnalyzer {
 
-    private static final Map<String, Set<AliasPair>> methodCallAliases = new HashMap<>();
-
+    private static final Map<String, AliasingState> methodStates = new HashMap<>();
     private static String currentMethodCall = null;
+    private static AliasingState currentState = null;
 
     public static void setCurrentMethodCall(String methodCallId) {
         currentMethodCall = methodCallId;
-        methodCallAliases.putIfAbsent(methodCallId, new HashSet<>());
+        methodStates.putIfAbsent(methodCallId, new AliasingState());
+        currentState = methodStates.get(methodCallId);
     }
 
     public static String getCurrentMethodCall() {
@@ -35,86 +49,20 @@ public class AliasPairAnalyzer {
     }
 
     public static void resetAll() {
-        methodCallAliases.clear();
+        methodStates.clear();
         currentMethodCall = null;
+        currentState = null;
     }
 
-    private static Set<AliasPair> getCurrentMethodCallAliases() {
-        if (currentMethodCall == null) {
-            return new HashSet<>();
+    private static AliasingState getCurrentState() {
+        if (currentState == null) {
+            return new AliasingState();
         }
-        return methodCallAliases.getOrDefault(currentMethodCall, new HashSet<>());
+        return currentState;
     }
 
     public static Set<AliasPair> getDefiniteAliases() {
-        return new HashSet<>(getCurrentMethodCallAliases());
-    }
-
-    private static void addDefiniteAlias(String var1, String var2) {
-        if (currentMethodCall == null || var1.equals(var2)) {
-            return;
-        }
-
-        Set<AliasPair> aliases = methodCallAliases.get(currentMethodCall);
-        aliases.add(new AliasPair(var1, var2));
-        computeTransitiveClosure();
-    }
-
-    private static void removeAliasesFor(String var) {
-        if (currentMethodCall == null) {
-            return;
-        }
-
-        Set<AliasPair> aliases = methodCallAliases.get(currentMethodCall);
-        aliases.removeIf(pair -> pair.getVar1().equals(var) || pair.getVar2().equals(var));
-    }
-
-    private static void computeTransitiveClosure() {
-        if (currentMethodCall == null) {
-            System.out.println("Warning: No current method set for alias analysis");
-            return;
-        }
-
-        Set<AliasPair> aliases = getCurrentMethodCallAliases();
-        Set<AliasPair> newAliases = new HashSet<>();
-        boolean changed;
-
-        do {
-            changed = false;
-            for (AliasPair pair1 : aliases) {
-                for (AliasPair pair2 : aliases) {
-                    AliasPair newPair = null;
-
-                    // Case 1: (a,b) and (b,c) -> (a,c)
-                    if (pair1.getVar2().equals(pair2.getVar1())) {
-                        newPair = new AliasPair(pair1.getVar1(), pair2.getVar2());
-                    }
-
-                    // Case 2: (a,b) and (c,b) -> (a,c)
-                    else if (pair1.getVar2().equals(pair2.getVar2())) {
-                        newPair = new AliasPair(pair1.getVar1(), pair2.getVar1());
-                    }
-
-                    // Case 3: (b,a) and (b,c) -> (a,c)
-                    else if (pair1.getVar1().equals(pair2.getVar1())) {
-                        newPair = new AliasPair(pair1.getVar2(), pair2.getVar2());
-                    }
-
-                    // Case 4: (b,a) and (c,b) -> (c,a)
-                    else if (pair1.getVar1().equals(pair2.getVar2())) {
-                        newPair = new AliasPair(pair1.getVar2(), pair2.getVar1());
-                    }
-
-                    if (newPair != null && !aliases.contains(newPair) && !newPair.getVar1().equals(newPair.getVar2())) {
-                        newAliases.add(newPair);
-                        changed = true;
-                    }
-                }
-            }
-
-            aliases.addAll(newAliases);
-            newAliases.clear();
-        } while (changed);
+        return new HashSet<>(getCurrentState().getAliasPairs());
     }
 
     public static String formatForLabel(Set<AliasPair> aliasPairs) {
@@ -132,123 +80,157 @@ public class AliasPairAnalyzer {
         return sb.toString();
     }
 
-    public static void analyze(BytecodeInstruction instruction, JVMState state) {
+    public static void analyze(BytecodeInstruction instruction) {
         if (currentMethodCall == null) {
             System.out.println("Warning: No current method set for alias analysis");
             return;
         }
 
-        // System.out.println("Before analysis: " +
-        // formatForLabel(getDefiniteAliases()));
-
-        // Instructions that mainly add aliases
         if (instruction instanceof LoadInstruction) {
-            handleLoadInstruction((LoadInstruction) instruction, state);
+            handleLoadInstruction((LoadInstruction) instruction);
         } else if (instruction instanceof DupInstruction) {
-            handleDupInstruction((DupInstruction) instruction, state);
+            handleDupInstruction((DupInstruction) instruction);
         } else if (instruction instanceof StoreInstruction) {
-            handleStoreInstruction((StoreInstruction) instruction, state);
-        }
-
-        // Instructions that mainly remove aliases
-        else if (instruction instanceof GetFieldInstruction) {
-            handleGetFieldInstruction((GetFieldInstruction) instruction, state);
+            handleStoreInstruction((StoreInstruction) instruction);
+        } else if (instruction instanceof GetFieldInstruction) {
+            handleGetFieldInstruction((GetFieldInstruction) instruction);
         } else if (instruction instanceof PutFieldInstruction) {
-            handlePutFieldInstruction((PutFieldInstruction) instruction, state);
+            handlePutFieldInstruction((PutFieldInstruction) instruction);
         } else if (instruction instanceof AddInstruction) {
-            handleAddInstruction((AddInstruction) instruction, state);
+            handleAddInstruction((AddInstruction) instruction);
         } else if (instruction instanceof ConstInstruction) {
-            handleConstInstruction((ConstInstruction) instruction, state);
+            handleConstInstruction((ConstInstruction) instruction);
         } else if (instruction instanceof NewInstruction) {
-            handleNewInstruction((NewInstruction) instruction, state);
+            handleNewInstruction((NewInstruction) instruction);
         } else if (instruction instanceof IfEqOfTypeInstruction) {
-            handleIfEqOfTypeInstruction((IfEqOfTypeInstruction) instruction, state);
+            handleIfEqOfTypeInstruction((IfEqOfTypeInstruction) instruction);
         } else if (instruction instanceof IfNeOfTypeInstruction) {
-            handleIfNeOfTypeInstruction((IfNeOfTypeInstruction) instruction, state);
+            handleIfNeOfTypeInstruction((IfNeOfTypeInstruction) instruction);
         } else if (instruction instanceof CallInstruction) {
-            handleCallInstruction((CallInstruction) instruction, state);
+            handleCallInstruction((CallInstruction) instruction);
         }
-
-        // System.out.println("After analysis: " +
-        // formatForLabel(getDefiniteAliases()));
     }
 
-    private static void handleLoadInstruction(LoadInstruction loadInst, JVMState state) {
+    private static void handleLoadInstruction(LoadInstruction loadInst) {
         int localIndex = loadInst.getIndex();
-        int futureStackIndex = state.getStackSize() - 1;
         String localVar = "l" + localIndex;
-        String futureStackVar = "s" + futureStackIndex;
+        String stackVar = "s" + currentState.getStackSize();
 
-        addDefiniteAlias(localVar, futureStackVar);
+        currentState.pushToStack(stackVar);
+        if (!localVar.equals(stackVar)) {
+            currentState.addAliasPair(localVar, stackVar);
+        }
     }
 
-    private static void handleStoreInstruction(StoreInstruction storeInst, JVMState state) {
-        int currentStackIndex = state.getStackSize();
-        String currentStackVar = "s" + currentStackIndex;
+    private static void handleStoreInstruction(StoreInstruction storeInst) {
         int localIndex = storeInst.getIndex();
         String localVar = "l" + localIndex;
-        addDefiniteAlias(currentStackVar, localVar);
+        String stackVar = currentState.popFromStack();
 
-        removeAliasesFor(currentStackVar);
-    }
-
-    private static void handleDupInstruction(DupInstruction dupInst, JVMState state) {
-        int currentStackIndex = state.getStackSize() - 2;
-        int futureStackIndex = state.getStackSize() - 1;
-        String currentStackVar = "s" + currentStackIndex;
-        String futureStackVar = "s" + futureStackIndex;
-
-        addDefiniteAlias(currentStackVar, futureStackVar);
-    }
-
-    private static void handleGetFieldInstruction(GetFieldInstruction getFieldInst, JVMState state) {
-        String stackVar = "s" + (state.getStackSize() - 1);
-
-        removeAliasesFor(stackVar);
-    }
-
-    private static void handlePutFieldInstruction(PutFieldInstruction putFieldInst, JVMState state) {
-        String objectRef = "s" + (state.getStackSize() - 1);
-        String value = "s" + (state.getStackSize());
-        removeAliasesFor(objectRef);
-        removeAliasesFor(value);
-    }
-
-    private static void handleAddInstruction(AddInstruction addInst, JVMState state) {
-        String resultVar = "s" + (state.getStackSize() - 1);
-        removeAliasesFor(resultVar);
-
-        String topVar = "s" + (state.getStackSize());
-        removeAliasesFor(topVar);
-    }
-
-    private static void handleConstInstruction(ConstInstruction constInst, JVMState state) {
-        return;
-    }
-
-    private static void handleNewInstruction(NewInstruction newInst, JVMState state) {
-        return;
-    }
-
-    private static void handleIfEqOfTypeInstruction(IfEqOfTypeInstruction ifEqInst, JVMState state) {
-        String topStackVar = "s" + (state.getStackSize());
-
-        removeAliasesFor(topStackVar);
-    }
-
-    private static void handleIfNeOfTypeInstruction(IfNeOfTypeInstruction ifNeInst, JVMState state) {
-        String topStackVar = "s" + (state.getStackSize());
-
-        removeAliasesFor(topStackVar);
-    }
-
-    private static void handleCallInstruction(CallInstruction callInst, JVMState state) {
-        int paramCount = callInst.getParameterCount();
-
-        for (int i = 0; i < paramCount + 1; i++) {
-            int stackIndex = state.getStackSize() + i;
-            String stackVar = "s" + stackIndex;
-            removeAliasesFor(stackVar);
+        if (!stackVar.equals(localVar)) {
+            currentState.addAliasPair(stackVar, localVar);
         }
+
+        currentState.removeAliasesFor(stackVar);
+    }
+
+    private static void handleDupInstruction(DupInstruction dupInst) {
+        String topVar = currentState.peekStack();
+        String newStackVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(newStackVar);
+
+        if (!topVar.equals(newStackVar)) {
+            currentState.addAliasPair(topVar, newStackVar);
+        }
+    }
+
+    private static void handleGetFieldInstruction(GetFieldInstruction getFieldInst) {
+        String objectVar = currentState.popFromStack();
+        String resultVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(resultVar);
+
+        currentState.removeAliasesFor(resultVar);
+    }
+
+    private static void handlePutFieldInstruction(PutFieldInstruction putFieldInst) {
+        String valueVar = currentState.popFromStack();
+        String objectVar = currentState.popFromStack();
+
+        currentState.removeAliasesFor(objectVar);
+        currentState.removeAliasesFor(valueVar);
+    }
+
+    private static void handleAddInstruction(AddInstruction addInst) {
+        String op2 = currentState.popFromStack();
+        String op1 = currentState.popFromStack();
+
+        String resultVar = "s" + currentState.getStackSize();
+        currentState.pushToStack(resultVar);
+
+        currentState.removeAliasesFor(op1);
+        currentState.removeAliasesFor(op2);
+    }
+
+    private static void handleConstInstruction(ConstInstruction constInst) {
+        String constVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(constVar);
+    }
+
+    private static void handleNewInstruction(NewInstruction newInst) {
+        String newObjectVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(newObjectVar);
+    }
+
+    private static void handleIfEqOfTypeInstruction(IfEqOfTypeInstruction ifEqInst) {
+        String topVar = currentState.popFromStack();
+
+        currentState.removeAliasesFor(topVar);
+    }
+
+    private static void handleIfNeOfTypeInstruction(IfNeOfTypeInstruction ifNeInst) {
+        String topVar = currentState.popFromStack();
+
+        currentState.removeAliasesFor(topVar);
+    }
+
+    private static void handleCallInstruction(CallInstruction callInst) {
+        int paramCount = callInst.getParameterCount();
+        for (int i = 0; i < paramCount + 1; i++) {
+            String paramVar = currentState.popFromStack();
+            currentState.removeAliasesFor(paramVar);
+        }
+        if (!callInst.getReturnType().equals("void")) {
+            String resultVar = "s" + currentState.getStackSize();
+            currentState.pushToStack(resultVar);
+        }
+    }
+
+    /**
+     * Vérifie si deux variables sont des alias dans l'état courant.
+     */
+    public static boolean areAliases(String var1, String var2) {
+        return getCurrentState().areAliases(var1, var2);
+    }
+
+    /**
+     * Récupère toutes les variables qui sont des alias d'une variable donnée.
+     */
+    public static Set<String> getAliasesOf(String var) {
+        Set<String> aliases = new HashSet<>();
+        Set<AliasPair> aliasPairs = getDefiniteAliases();
+
+        for (AliasPair pair : aliasPairs) {
+            if (pair.getVar1().equals(var)) {
+                aliases.add(pair.getVar2());
+            } else if (pair.getVar2().equals(var)) {
+                aliases.add(pair.getVar1());
+            }
+        }
+
+        return aliases;
     }
 }

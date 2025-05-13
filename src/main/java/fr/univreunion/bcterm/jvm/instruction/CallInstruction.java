@@ -265,4 +265,13 @@ public class CallInstruction extends BytecodeInstruction {
 
         return parameters.size();
     }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public String getReturnType() {
+        Map<String, Object> signatureInfo = parseSignature(this.signature);
+        return (String) signatureInfo.get("returnType");
+    }
 }

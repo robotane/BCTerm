@@ -1,24 +1,29 @@
 package fr.univreunion.bcterm.analysis.sharing;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.jvm.instruction.AddInstruction;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
-import fr.univreunion.bcterm.jvm.state.JVMState;
-import fr.univreunion.bcterm.jvm.state.LocationValue;
-import fr.univreunion.bcterm.jvm.state.Value;
+import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
+import fr.univreunion.bcterm.jvm.instruction.ConstInstruction;
+import fr.univreunion.bcterm.jvm.instruction.DupInstruction;
+import fr.univreunion.bcterm.jvm.instruction.GetFieldInstruction;
+import fr.univreunion.bcterm.jvm.instruction.IfEqOfTypeInstruction;
+import fr.univreunion.bcterm.jvm.instruction.IfNeOfTypeInstruction;
+import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
+import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
+import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
+import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
 
 /**
  * Analyzes sharing relationships between variables in a JVM state.
  * 
  * Two variables are considered to share if they can reach a common memory
- * location,
- * either directly or transitively through object references. For example:
+ * location, either directly or transitively through object references. For
+ * example:
  * 
  * Case 1 (No sharing):
  * When two variables point to completely disjoint data structures,
@@ -28,18 +33,19 @@ import fr.univreunion.bcterm.jvm.state.Value;
  * When one variable can reach memory locations reachable by another variable
  * (e.g., through field references like sh2 == sh1.next), they share memory.
  * 
- * The analysis helps in understanding data structure relationships,
- * detecting potential infinite recursion, and analyzing termination properties.
+ * This implementation is based on the pair-sharing analysis approach described
+ * in:
+ * "Pair-Sharing Analysis of Object-Oriented Programs" by Stefano Secci and
+ * Fausto Spoto,
+ * which formalizes the abstract domain for pair-sharing and provides a
+ * compositional
+ * abstract semantics for static analysis.
  */
 public class SharingPairAnalyzer {
 
-    // Map from method call ID to set of sharing pairs for that method call
-    private static final Map<String, Set<SharingPair>> methodCallSharingPairs = new HashMap<>();
-
-    // Current method call being analyzed
+    private static final Map<String, SharingState> methodStates = new HashMap<>();
     private static String currentMethodCall = null;
-
-    // Counter for method calls
+    private static SharingState currentState = null;
     private static final Map<String, Integer> methodCallCounters = new HashMap<>();
 
     /**
@@ -50,8 +56,9 @@ public class SharingPairAnalyzer {
      */
     public static void setCurrentMethodCall(String methodCallId) {
         currentMethodCall = methodCallId;
-        // Initialize the sharing pairs set for this method call if it doesn't exist
-        methodCallSharingPairs.putIfAbsent(methodCallId, new HashSet<>());
+
+        methodStates.putIfAbsent(methodCallId, new SharingState());
+        currentState = methodStates.get(methodCallId);
     }
 
     /**
@@ -70,12 +77,14 @@ public class SharingPairAnalyzer {
      * @return A unique identifier for this method call
      */
     public static String getNextMethodCallId(String methodName) {
-        // Get the current count for this method and increment it
         int count = methodCallCounters.getOrDefault(methodName, 0) + 1;
         methodCallCounters.put(methodName, count);
 
-        // Return a unique identifier combining method name and call count
         return methodName + "_call" + count;
+    }
+
+    public static Set<SharingPair> getCurrentSharingPairs() {
+        return new HashSet<>(currentState.getSharingPairs());
     }
 
     /**
@@ -83,182 +92,10 @@ public class SharingPairAnalyzer {
      * Should be called at the beginning of a new program execution.
      */
     public static void resetAll() {
-        methodCallSharingPairs.clear();
+        methodStates.clear();
         methodCallCounters.clear();
         currentMethodCall = null;
-    }
-
-    /**
-     * Resets the sharing analysis state for a specific method.
-     *
-     * @param methodName The name of the method to reset
-     */
-    public static void resetMethod(String methodName) {
-        methodCallSharingPairs.put(methodName, new HashSet<>());
-    }
-
-    /**
-     * Analyzes the JVM state to determine pairs of variables that might share.
-     *
-     * @param state       The JVM state to analyze
-     * @param instruction The current bytecode instruction
-     * @return The set of variable pairs that might share
-     */
-    public static Set<SharingPair> analyze(JVMState state, BytecodeInstruction instruction) {
-        if (currentMethodCall == null) {
-            System.out.println("Warning: No current method call set for sharing analysis");
-            return new HashSet<>();
-        }
-
-        // Build accessibility graph
-        Map<String, Set<Long>> pointsToGraph = buildPointsToGraph(state);
-
-        // Determine sharing pairs
-        Set<SharingPair> sharingPairs = computeSharingPairs(pointsToGraph);
-
-        // Store results for current method
-        methodCallSharingPairs.put(currentMethodCall, sharingPairs);
-
-        return sharingPairs;
-    }
-
-    /**
-     * Analyzes the sharing relationships between variables and objects in a JVM
-     * state.
-     * 
-     * @param state The JVM state to analyze for object sharing
-     * @return A set of sharing pairs representing variables that point to the same
-     *         or related memory addresses
-     */
-    public static Set<SharingPair> analyze(JVMState state) {
-        if (currentMethodCall == null) {
-            System.out.println("Warning: No current method call set for sharing analysis");
-            return new HashSet<>();
-        }
-        Map<String, Set<Long>> memoryGraph = buildPointsToGraph(state);
-
-        Set<SharingPair> sharingPairs = computeSharingPairs(memoryGraph);
-        methodCallSharingPairs.put(currentMethodCall, sharingPairs);
-
-        return sharingPairs;
-    }
-
-    /**
-     * Constructs a memory graph by mapping variables to their memory addresses.
-     * 
-     * Traverses local variables and stack elements, identifying location values
-     * and building a graph that tracks the memory addresses each variable can
-     * reach.
-     * 
-     * Example:
-     * For a JVM state with:
-     * - Local variable l0 pointing to address 1, which has a field pointing to
-     * address 2
-     * - Stack element s0 pointing to address 3
-     * The resulting graph would be:
-     * {
-     * "l0" -> {1, 2},
-     * "s0" -> {3}
-     * }
-     * 
-     * @param state The JVM state containing local variables and stack elements to
-     *              analyze
-     * @return A map of variable names to sets of memory addresses they reference
-     */
-    public static Map<String, Set<Long>> buildPointsToGraph(JVMState state) {
-        Map<String, Set<Long>> pointsToGraph = new HashMap<>();
-
-        // Process local variables
-        for (int i = 0; i < state.getLocalVariablesSize(); i++) {
-            Value value = state.getLocalVariable(i);
-            if (value != null && value instanceof LocationValue) {
-                LocationValue locationValue = (LocationValue) value;
-                String varName = "l" + i;
-                long address = locationValue.getAddress();
-                pointsToGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
-
-                // Add objects accessible through fields
-                addReachableObjects(varName, address, pointsToGraph, state, new HashSet<>());
-            }
-        }
-
-        // Process stack elements
-        for (int i = 0; i < state.getStackSize(); i++) {
-            Value value = state.getStackElement(i);
-            if (value != null && value instanceof LocationValue) {
-                LocationValue locationValue = (LocationValue) value;
-                String varName = "s" + i;
-                long address = locationValue.getAddress();
-                pointsToGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(address);
-
-                // Add objects accessible through fields
-                addReachableObjects(varName, address, pointsToGraph, state, new HashSet<>());
-            }
-        }
-
-        return pointsToGraph;
-    }
-
-    /**
-     * Recursively explores and tracks reachable memory objects from a given
-     * address.
-     *
-     * @param varName     The name of the variable being analyzed
-     * @param address     The starting memory address to explore
-     * @param memoryGraph A mapping of variable names to their reachable object
-     *                    addresses
-     * @param state       The current JVM state containing object field
-     *                    information
-     * @param visited     A set of already visited memory addresses to prevent
-     *                    infinite recursion
-     */
-    private static void addReachableObjects(String varName, long address,
-            Map<String, Set<Long>> memoryGraph, JVMState state,
-            Set<Long> visited) {
-        if (visited.contains(address)) {
-            return;
-        }
-        visited.add(address);
-
-        Map<String, Value> objectFields = state.getObjectFields(address);
-        if (objectFields != null) {
-            for (String fieldName : objectFields.keySet()) {
-                Value fieldValue = objectFields.get(fieldName);
-                if (fieldValue != null && fieldValue instanceof LocationValue) {
-                    LocationValue locationValue = (LocationValue) fieldValue;
-                    long fieldAddress = locationValue.getAddress();
-                    memoryGraph.computeIfAbsent(varName, k -> new HashSet<>()).add(fieldAddress);
-
-                    addReachableObjects(varName, fieldAddress, memoryGraph, state, visited);
-                }
-            }
-        }
-    }
-
-    /**
-     * Computes sharing pairs of variables that point to the same memory addresses.
-     *
-     * @param memoryGraph A mapping of variable names to their memory addresses
-     * @return A set of sharing pairs representing variables with overlapping memory
-     *         references
-     */
-    private static Set<SharingPair> computeSharingPairs(Map<String, Set<Long>> memoryGraph) {
-        Set<SharingPair> sharingPairs = new HashSet<>();
-        List<String> variables = new ArrayList<>(memoryGraph.keySet());
-        for (int i = 0; i < variables.size(); i++) {
-            String var1 = variables.get(i);
-            Set<Long> addresses1 = memoryGraph.get(var1);
-            for (int j = i + 1; j < variables.size(); j++) {
-                String var2 = variables.get(j);
-                Set<Long> addresses2 = memoryGraph.get(var2);
-
-                // Check if the two variables share any memory addresses
-                if (!Collections.disjoint(addresses1, addresses2)) {
-                    sharingPairs.add(new SharingPair(var1, var2));
-                }
-            }
-        }
-        return sharingPairs;
+        currentState = null;
     }
 
     /**
@@ -290,7 +127,10 @@ public class SharingPairAnalyzer {
      * @return The set of sharing pairs for this method
      */
     public static Set<SharingPair> getSharingPairsForMethod(String methodName) {
-        return new HashSet<>(methodCallSharingPairs.getOrDefault(methodName, new HashSet<>()));
+        if (currentState == null) {
+            return new HashSet<>();
+        }
+        return new HashSet<>(currentState.getSharingPairs());
     }
 
     /**
@@ -298,7 +138,193 @@ public class SharingPairAnalyzer {
      *
      * @return The set of sharing pairs for the current method
      */
-    public static Set<SharingPair> getCurrentSharingPairs() {
-        return getSharingPairsForMethod(currentMethodCall);
+    public static Set<SharingPair> getSharingPairs() {
+        if (currentState == null) {
+            return new HashSet<>();
+        }
+        return currentState.getSharingPairs();
     }
+
+    /**
+     * Analyzes a bytecode instruction for sharing effects.
+     * 
+     * @param instruction The bytecode instruction to analyze
+     */
+    public static void analyze(BytecodeInstruction instruction) {
+        if (currentMethodCall == null || currentState == null) {
+            System.out.println("Warning: No current method call set for sharing analysis");
+            return;
+        }
+
+        if (instruction instanceof LoadInstruction) {
+            handleLoadInstruction((LoadInstruction) instruction);
+        } else if (instruction instanceof StoreInstruction) {
+            handleStoreInstruction((StoreInstruction) instruction);
+        } else if (instruction instanceof GetFieldInstruction) {
+            handleGetFieldInstruction((GetFieldInstruction) instruction);
+        } else if (instruction instanceof PutFieldInstruction) {
+            handlePutFieldInstruction((PutFieldInstruction) instruction);
+        } else if (instruction instanceof NewInstruction) {
+            handleNewInstruction((NewInstruction) instruction);
+        } else if (instruction instanceof ConstInstruction) {
+            handleConstInstruction((ConstInstruction) instruction);
+        } else if (instruction instanceof CallInstruction) {
+            handleCallInstruction((CallInstruction) instruction);
+        } else if (instruction instanceof DupInstruction) {
+            handleDupInstruction((DupInstruction) instruction);
+        } else if (instruction instanceof AddInstruction) {
+            handleAddInstruction((AddInstruction) instruction);
+        } else if (instruction instanceof IfEqOfTypeInstruction) {
+            handleIfEqOfTypeInstruction((IfEqOfTypeInstruction) instruction);
+        } else if (instruction instanceof IfNeOfTypeInstruction) {
+            handleIfNeOfTypeInstruction((IfNeOfTypeInstruction) instruction);
+        }
+    }
+
+    private static void handleLoadInstruction(LoadInstruction instruction) {
+        int localIndex = instruction.getIndex();
+        String localVar = "l" + localIndex;
+        String stackVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(stackVar);
+        currentState.addSharingPair(localVar, stackVar);
+
+        currentState.computeTransitiveClosure();
+    }
+
+    private static void handleStoreInstruction(StoreInstruction instruction) {
+        int localIndex = instruction.getIndex();
+        String localVar = "l" + localIndex;
+        String stackVar = currentState.popFromStack();
+
+        currentState.addSharingPair(localVar, stackVar);
+
+        currentState.computeTransitiveClosure();
+        currentState.removeSharingPairsFor(stackVar);
+    }
+
+    private static void handleGetFieldInstruction(GetFieldInstruction instruction) {
+        String objectVar = currentState.popFromStack();
+        String resultVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(resultVar);
+
+        currentState.addSharingPair(objectVar, resultVar);
+
+        currentState.computeTransitiveClosure();
+    }
+
+    private static void handlePutFieldInstruction(PutFieldInstruction instruction) {
+        String valueVar = currentState.popFromStack();
+        String objectVar = currentState.popFromStack();
+
+        currentState.addSharingPair(objectVar, valueVar);
+
+        currentState.computeTransitiveClosure();
+
+        currentState.removeSharingPairsFor(valueVar);
+        currentState.removeSharingPairsFor(objectVar);
+    }
+
+    private static void handleNewInstruction(NewInstruction instruction) {
+        String newObjectVar = "s" + currentState.getStackSize();
+        currentState.pushToStack(newObjectVar);
+    }
+
+    private static void handleConstInstruction(ConstInstruction instruction) {
+        String constVar = "s" + currentState.getStackSize();
+        currentState.pushToStack(constVar);
+    }
+
+    private static void handleCallInstruction(CallInstruction instruction) {
+        int paramCount = instruction.getParameterCount();
+        String[] params = new String[paramCount + 1];
+        for (int i = 0; i < paramCount + 1; i++) {
+            params[paramCount - i] = currentState.popFromStack();
+        }
+        for (int i = 0; i < params.length; i++) {
+            for (int j = i + 1; j < params.length; j++) {
+                currentState.addSharingPair(params[i], params[j]);
+            }
+        }
+        currentState.computeTransitiveClosure();
+
+        for (String param : params) {
+            currentState.removeSharingPairsFor(param);
+        }
+        if (!instruction.getReturnType().equals("void")) {
+            String resultVar = "s" + currentState.getStackSize();
+            currentState.pushToStack(resultVar);
+        }
+    }
+
+    private static void handleDupInstruction(DupInstruction instruction) {
+        String topVar = currentState.peekStack();
+        String newStackVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(newStackVar);
+
+        currentState.addSharingPair(topVar, newStackVar);
+
+        Set<String> sharingWithTop = currentState.getSharingVarsWith(topVar);
+        for (String var : sharingWithTop) {
+            currentState.addSharingPair(newStackVar, var);
+        }
+    }
+
+    private static void handleAddInstruction(AddInstruction instruction) {
+        String op2 = currentState.popFromStack();
+        String op1 = currentState.popFromStack();
+        String resultVar = "s" + currentState.getStackSize();
+
+        currentState.pushToStack(resultVar);
+
+        currentState.addSharingPair(resultVar, op1);
+        currentState.addSharingPair(resultVar, op2);
+
+        currentState.computeTransitiveClosure();
+
+        currentState.removeSharingPairsFor(op1);
+        currentState.removeSharingPairsFor(op2);
+    }
+
+    private static void handleIfEqOfTypeInstruction(IfEqOfTypeInstruction instruction) {
+        String topVar = currentState.popFromStack();
+        currentState.removeSharingPairsFor(topVar);
+    }
+
+    private static void handleIfNeOfTypeInstruction(IfNeOfTypeInstruction instruction) {
+        String topVar = currentState.popFromStack();
+        currentState.removeSharingPairsFor(topVar);
+    }
+
+    /**
+     * Retrieves all variables that may share memory with the given variable.
+     * 
+     * @param var the variable to find sharing variables for
+     * @return a set of variables that may share memory with the input variable,
+     *         or an empty set if no current state is available
+     */
+    public static Set<String> getSharingVarsWith(String var) {
+        if (currentState == null) {
+            return new HashSet<>();
+        }
+        return currentState.getSharingVarsWith(var);
+    }
+
+    /**
+     * Determines whether two variables may potentially share memory.
+     * 
+     * @param var1 the first variable to check for potential memory sharing
+     * @param var2 the second variable to check for potential memory sharing
+     * @return true if the variables may share memory, false otherwise or if no
+     *         current state is available
+     */
+    public static boolean mayShare(String var1, String var2) {
+        if (currentState == null) {
+            return false;
+        }
+        return currentState.mayShare(var1, var2);
+    }
+
 }
