@@ -238,20 +238,11 @@ public class SharingPairAnalyzer {
 
     private static void handleCallInstruction(CallInstruction instruction) {
         int paramCount = instruction.getParameterCount();
-        String[] params = new String[paramCount + 1];
         for (int i = 0; i < paramCount + 1; i++) {
-            params[paramCount - i] = currentState.popFromStack();
+            String paramVar = currentState.popFromStack();
+            currentState.removeSharingPairsFor(paramVar);
         }
-        for (int i = 0; i < params.length; i++) {
-            for (int j = i + 1; j < params.length; j++) {
-                currentState.addSharingPair(params[i], params[j]);
-            }
-        }
-        currentState.computeTransitiveClosure();
 
-        for (String param : params) {
-            currentState.removeSharingPairsFor(param);
-        }
         if (!instruction.getReturnType().equals("void")) {
             String resultVar = "s" + currentState.getStackSize();
             currentState.pushToStack(resultVar);
