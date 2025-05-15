@@ -125,6 +125,7 @@ public class AliasPairAnalyzer {
         String localVar = "l" + localIndex;
         String stackVar = currentState.popFromStack();
 
+        currentState.removeAliasesFor(localVar);
         currentState.addAliasPair(stackVar, localVar);
 
         currentState.removeAliasesFor(stackVar);

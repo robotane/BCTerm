@@ -197,6 +197,7 @@ public class SharingPairAnalyzer {
         String localVar = "l" + localIndex;
         String stackVar = currentState.popFromStack();
 
+        currentState.removeSharingPairsFor(localVar);
         currentState.addSharingPair(localVar, stackVar);
 
         currentState.computeTransitiveClosure();
@@ -269,11 +270,6 @@ public class SharingPairAnalyzer {
         String resultVar = "s" + currentState.getStackSize();
 
         currentState.pushToStack(resultVar);
-
-        currentState.addSharingPair(resultVar, op1);
-        currentState.addSharingPair(resultVar, op2);
-
-        currentState.computeTransitiveClosure();
 
         currentState.removeSharingPairsFor(op1);
         currentState.removeSharingPairsFor(op2);
