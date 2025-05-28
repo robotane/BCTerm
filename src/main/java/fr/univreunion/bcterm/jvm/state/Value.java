@@ -8,7 +8,7 @@ public interface Value {
     /**
      * A constant representing a null value in the JVM state
      */
-    Value NULL = new NullValue();
+    final Value NULL = new NullValue();
 
     /**
      * Returns Java object representing this value
