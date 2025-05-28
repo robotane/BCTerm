@@ -4,8 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.aliasing.AliasingState;
+import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.sharing.SharingState;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.instruction.ConstInstruction;
@@ -32,28 +37,28 @@ public class SharingProgramExample {
         Program program = new Program("Sharing");
 
         // Add the "expand" method
-        CFG expandCfg = createExpandCFG();
+        CFG expandCfg = createExpandCFG(program);
         program.addMethod("expand", "(Sharing):void", expandCfg);
 
         // Add the "init" method
-        CFG initCfg = createInitCFG();
+        CFG initCfg = createInitCFG(program);
         program.addMethod("<init>", "(Sharing):void", initCfg);
 
         // Add the "main_term" method
-        CFG mainTermCfg = createMainTermCFG();
+        CFG mainTermCfg = createMainTermCFG(program);
         program.addMethod("main_term", "(String[]):void", mainTermCfg);
 
         // Add the "main_cycle" method
-        CFG mainCycleCfg = createMainCycleCFG();
+        CFG mainCycleCfg = createMainCycleCFG(program);
         program.addMethod("main_cycle", mainCycleCfg);
 
         // Set the main method
-        program.setMainMethodName("main_cycle");
+        program.setMainMethodName("main_term");
 
         return program;
     }
 
-    private static CFG createExpandCFG() {
+    private static CFG createExpandCFG(Program program) {
         // Create the CFG of "expand"
         List<BytecodeInstruction> block1Instructions = new ArrayList<>();
         List<BytecodeInstruction> block2Instructions = new ArrayList<>();
@@ -81,7 +86,9 @@ public class SharingProgramExample {
 
         // Block 5: call Sharing.<init>(Sharing):void, putfield next, load 1, getfield
         // next, store 1, load 2, getfield next, store 2
-        block5Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit.setProgram(program);
+        block5Instructions.add(callInit);
         block5Instructions.add(new PutFieldInstruction("next"));
         block5Instructions.add(new LoadInstruction(1));
         block5Instructions.add(new GetFieldInstruction("next"));
@@ -117,7 +124,7 @@ public class SharingProgramExample {
         return cfg;
     }
 
-    private static CFG createInitCFG() {
+    private static CFG createInitCFG(Program program) {
         // Create the CFG for "init"
         List<BytecodeInstruction> block1Instructions = new ArrayList<>();
 
@@ -138,7 +145,7 @@ public class SharingProgramExample {
         return cfg;
     }
 
-    private static CFG createMainTermCFG() {
+    private static CFG createMainTermCFG(Program program) {
         // Create the CFG for "main_term"
         CFG cfg = new CFG();
 
@@ -155,18 +162,24 @@ public class SharingProgramExample {
 
         // Block 2: call Sharing.<init>(Sharing):void
         List<BytecodeInstruction> block2Instructions = new ArrayList<>();
-        block2Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit1 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit1.setProgram(program);
+        block2Instructions.add(callInit1);
         BasicBlock bb2 = new BasicBlock(2, block2Instructions);
 
         // Block 3: call Sharing.<init>(Sharing):void
         List<BytecodeInstruction> block3Instructions = new ArrayList<>();
-        block3Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit2 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit2.setProgram(program);
+        block3Instructions.add(callInit2);
         BasicBlock bb3 = new BasicBlock(3, block3Instructions);
 
         // Block 4: call Sharing.<init>(Sharing):void, store 1, new Sharing, dup, new
         // Sharing, dup, const null
         List<BytecodeInstruction> block4Instructions = new ArrayList<>();
-        block4Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit3 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit3.setProgram(program);
+        block4Instructions.add(callInit3);
         block4Instructions.add(new StoreInstruction(1));
         block4Instructions.add(new NewInstruction("Sharing"));
         block4Instructions.add(new DupInstruction());
@@ -177,12 +190,16 @@ public class SharingProgramExample {
 
         // Block 5: call Sharing.<init>(Sharing):void
         List<BytecodeInstruction> block5Instructions = new ArrayList<>();
-        block5Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit4 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit4.setProgram(program);
+        block5Instructions.add(callInit4);
         BasicBlock bb5 = new BasicBlock(5, block5Instructions);
 
         // Block 6: call Sharing.<init>(Sharing):void, store 2, load 1, load 2
         List<BytecodeInstruction> block6Instructions = new ArrayList<>();
-        block6Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit5 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit5.setProgram(program);
+        block6Instructions.add(callInit5);
         block6Instructions.add(new StoreInstruction(2));
         block6Instructions.add(new LoadInstruction(1));
         block6Instructions.add(new LoadInstruction(2));
@@ -190,7 +207,9 @@ public class SharingProgramExample {
 
         // Block 7: call Sharing.expand(Sharing):void
         List<BytecodeInstruction> block7Instructions = new ArrayList<>();
-        block7Instructions.add(new CallInstruction("Sharing.expand(Sharing):void"));
+        CallInstruction callExpand = new CallInstruction("Sharing.expand(Sharing):void");
+        callExpand.setProgram(program);
+        block7Instructions.add(callExpand);
         BasicBlock bb7 = new BasicBlock(7, block7Instructions);
 
         // Add blocks to CFG
@@ -213,7 +232,7 @@ public class SharingProgramExample {
         return cfg;
     }
 
-    private static CFG createMainCycleCFG() {
+    private static CFG createMainCycleCFG(Program program) {
         // Create CFG for "main_cycle"
         CFG cfg = new CFG();
 
@@ -230,18 +249,24 @@ public class SharingProgramExample {
 
         // Block 2: call Sharing.<init>(Sharing):void
         List<BytecodeInstruction> block2Instructions = new ArrayList<>();
-        block2Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit1 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit1.setProgram(program);
+        block2Instructions.add(callInit1);
         BasicBlock bb2 = new BasicBlock(2, block2Instructions);
 
         // Block 3: call Sharing.<init>(Sharing):void
         List<BytecodeInstruction> block3Instructions = new ArrayList<>();
-        block3Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit2 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit2.setProgram(program);
+        block3Instructions.add(callInit2);
         BasicBlock bb3 = new BasicBlock(3, block3Instructions);
 
         // Block 4: call Sharing.<init>(Sharing):void, store 1, new Sharing, dup, new
         // Sharing, dup, const null
         List<BytecodeInstruction> block4Instructions = new ArrayList<>();
-        block4Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit3 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit3.setProgram(program);
+        block4Instructions.add(callInit3);
         block4Instructions.add(new StoreInstruction(1));
         block4Instructions.add(new NewInstruction("Sharing"));
         block4Instructions.add(new DupInstruction());
@@ -252,13 +277,17 @@ public class SharingProgramExample {
 
         // Block 5: call Sharing.<init>(Sharing):void
         List<BytecodeInstruction> block5Instructions = new ArrayList<>();
-        block5Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit4 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit4.setProgram(program);
+        block5Instructions.add(callInit4);
         BasicBlock bb5 = new BasicBlock(5, block5Instructions);
 
         // Block 6: call Sharing.<init>(Sharing):void, store 2, load 2, getfield next,
         // load 2, putfield next
         List<BytecodeInstruction> block6Instructions = new ArrayList<>();
-        block6Instructions.add(new CallInstruction("Sharing.<init>(Sharing):void"));
+        CallInstruction callInit5 = new CallInstruction("Sharing.<init>(Sharing):void");
+        callInit5.setProgram(program);
+        block6Instructions.add(callInit5);
         block6Instructions.add(new StoreInstruction(2));
         block6Instructions.add(new LoadInstruction(2));
         block6Instructions.add(new GetFieldInstruction("next"));
@@ -270,7 +299,9 @@ public class SharingProgramExample {
         List<BytecodeInstruction> block7Instructions = new ArrayList<>();
         block7Instructions.add(new LoadInstruction(1));
         block7Instructions.add(new LoadInstruction(2));
-        block7Instructions.add(new CallInstruction("Sharing.expand(Sharing):void"));
+        CallInstruction callExpand = new CallInstruction("Sharing.expand(Sharing):void");
+        callExpand.setProgram(program);
+        block7Instructions.add(callExpand);
         BasicBlock bb7 = new BasicBlock(7, block7Instructions);
 
         // Add blocks to CFG
@@ -316,13 +347,60 @@ public class SharingProgramExample {
         // Initialize local variable 0 with null to represent args
         initialState.setLocalVariable(0, Value.NULL);
 
-        Set<JVMState> finalStates = program.execute(initialState);
+        // Execute aliasing analysis
+        System.out.println("\n========================================");
+        System.out.println("EXECUTING PROGRAM WITH ALIASING ANALYSIS");
+        System.out.println("========================================\n");
 
-        System.out.println("\nFinal state of the main method:");
-        for (JVMState state : finalStates) {
+        AliasingAnalysisRunner aliasingAnalysisRunner = new AliasingAnalysisRunner();
+        Set<JVMState> aliasingAnalysisResults = program.execute(initialState, aliasingAnalysisRunner);
+
+        System.out.println("\nFinal state after aliasing analysis:");
+        for (JVMState state : aliasingAnalysisResults) {
             System.out.println("Local variables: " + state.getLocalVariablesSize());
             System.out.println("Stack size: " + state.getStackSize());
             System.out.println(state.toDetailedString());
+        }
+
+        // Display aliasing analysis results
+        System.out.println("\nAliasing analysis results:");
+        for (Map.Entry<String, Map<BytecodeInstruction, AliasingState>> methodEntry : aliasingAnalysisRunner
+                .getMethodInstructionStates().entrySet()) {
+            System.out.println("\nMethod: " + methodEntry.getKey());
+            for (Map.Entry<BytecodeInstruction, AliasingState> instructionEntry : methodEntry.getValue().entrySet()) {
+                System.out.println("Instruction: " + instructionEntry.getKey());
+                System.out.println("State: " + instructionEntry.getValue());
+            }
+        }
+
+        // Reset initial state for next analysis
+        initialState = new JVMState();
+        initialState.setLocalVariable(0, Value.NULL);
+
+        // Execute sharing analysis
+        System.out.println("\n========================================");
+        System.out.println("EXECUTING PROGRAM WITH SHARING ANALYSIS");
+        System.out.println("========================================\n");
+
+        SharingAnalysisRunner sharingAnalysisRunner = new SharingAnalysisRunner();
+        Set<JVMState> sharingAnalysisResults = program.execute(initialState, sharingAnalysisRunner);
+
+        System.out.println("\nFinal state after sharing analysis:");
+        for (JVMState state : sharingAnalysisResults) {
+            System.out.println("Local variables: " + state.getLocalVariablesSize());
+            System.out.println("Stack size: " + state.getStackSize());
+            System.out.println(state.toDetailedString());
+        }
+
+        // Display sharing analysis
+        System.out.println("\nSharing analysis results:");
+        for (Map.Entry<String, Map<BytecodeInstruction, SharingState>> methodEntry : sharingAnalysisRunner
+                .getMethodInstructionStates().entrySet()) {
+            System.out.println("\nMethod: " + methodEntry.getKey());
+            for (Map.Entry<BytecodeInstruction, SharingState> instructionEntry : methodEntry.getValue().entrySet()) {
+                System.out.println("Instruction: " + instructionEntry.getKey());
+                System.out.println("State: " + instructionEntry.getValue());
+            }
         }
 
         if (Constants.ENABLE_FILE_GENERATION) {

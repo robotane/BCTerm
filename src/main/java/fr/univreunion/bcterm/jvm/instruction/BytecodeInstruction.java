@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
 import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
@@ -37,7 +38,7 @@ public abstract class BytecodeInstruction {
     /**
      * Executes this bytecode instruction on the given JVM state.
      * 
-     * @param state The current JVM state to execute the instruction on
+     * @param state The current JVM state to analyze the instruction on
      * @return true if execution should continue to next instruction, false if
      *         execution should stop
      */
@@ -175,5 +176,10 @@ public abstract class BytecodeInstruction {
 
     public void clearAnalysisResults() {
         analysisResults.clear();
+    }
+
+    public void setAnalysisRunner(AbstractAnalysisRunner analysisRunner) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setAnalysisRunner'");
     }
 }

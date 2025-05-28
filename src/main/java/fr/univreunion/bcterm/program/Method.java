@@ -9,12 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
-import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
-import fr.univreunion.bcterm.analysis.sharing.SharingPair;
-import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
+import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.state.JVMState;
@@ -107,24 +102,21 @@ public class Method {
         this.program = program;
     }
 
-    public Set<JVMState> execute(JVMState initialState) {
-        methodCallId = SharingPairAnalyzer.getNextMethodCallId(name);
+    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner analysisRunner) {
+        // Utiliser l'interpréteur pour générer un ID de méthode unique
+        this.methodCallId = analysisRunner.generateMethodCallId(name);
 
-        // Pass the method call ID to the analyzers
-        SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
-        AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
-        CyclicVariableAnalyzer.setCurrentMethodCall(methodCallId);
+        // Configurer l'interpréteur avec cet ID
+        analysisRunner.setCurrentMethodCall(this.methodCallId);
 
-        System.out.println("\nExecuting method " + name);
+        System.out.println("\nExecuting method " + name + " with " + analysisRunner.getName());
         System.out.println("---------------------------------");
 
         BasicBlock startBlock = cfg.getBlocks().get(0);
-
         Set<JVMState> finalStates = new HashSet<>();
-
         Set<BasicBlock> visitedInPath = new HashSet<>();
 
-        executeRecursive(startBlock, initialState, finalStates, visitedInPath);
+        executeRecursive(startBlock, initialState, finalStates, visitedInPath, analysisRunner);
 
         System.out.println("\nMethod " + name + " execution completed");
         System.out.println("Found " + finalStates.size() + " final states");
@@ -134,24 +126,13 @@ public class Method {
     }
 
     private void executeRecursive(BasicBlock currentBlock, JVMState currentState,
-            Set<JVMState> finalStates, Set<BasicBlock> visitedInPath) {
-        String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + methodCallId;
-        if (visitedInPath.contains(currentBlock)) {
-            System.out.println("Cycle detected at block " + currentBlock.getId() + " in method " + name);
-            finalStates.add(currentState.deepCopy());
-
-            if (Constants.ENABLE_FILE_GENERATION) {
-                MemoryGraphGenerator.generateFinalMemoryGraph(new JVMState(currentState), memoryGraphPath,
-                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, false);
-            }
-            return;
-        }
+            Set<JVMState> finalStates, Set<BasicBlock> visitedInPath, AbstractAnalysisRunner analysisRunner) {
 
         visitedInPath.add(currentBlock);
 
         System.out.println("Executing block " + currentBlock.getId() + " in method " + name);
 
-        JVMState stateAfterBlock = executeBlock(currentBlock, new JVMState(currentState));
+        JVMState stateAfterBlock = executeBlock(currentBlock, new JVMState(currentState), analysisRunner);
 
         if (stateAfterBlock == null) {
             System.out.println("Execution of block " + currentBlock.getId() + " failed in method " + name);
@@ -164,18 +145,10 @@ public class Method {
         if (nextBlocks.isEmpty()) {
             System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(stateAfterBlock.deepCopy());
-
-            if (Constants.ENABLE_FILE_GENERATION) {
-                MemoryGraphGenerator.generateFinalMemoryGraph(stateAfterBlock, memoryGraphPath,
-                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, false);
-            }
         } else {
-            // Execute recursively for each successor
             for (BasicBlock nextBlock : nextBlocks) {
-                System.out.println("Following path from block " + currentBlock.getId() +
-                        " to block " + nextBlock.getId() + " in method " + name);
-                executeRecursive(nextBlock, stateAfterBlock, finalStates,
-                        new HashSet<>(visitedInPath));
+                executeRecursive(nextBlock, stateAfterBlock.deepCopy(), finalStates,
+                        new HashSet<>(visitedInPath), analysisRunner);
             }
         }
 
@@ -183,7 +156,7 @@ public class Method {
         visitedInPath.remove(currentBlock);
     }
 
-    private JVMState executeBlock(BasicBlock block, JVMState state) {
+    private JVMState executeBlock(BasicBlock block, JVMState state, AbstractAnalysisRunner analysisRunner) {
         if (block == null || state == null) {
             return null;
         }
@@ -193,49 +166,72 @@ public class Method {
             return null;
         }
 
-        for (BytecodeInstruction instruction : instructions) {
-            if (instruction == null) {
-                continue;
-            }
-            Set<SharingPair> sharingPairs = SharingPairAnalyzer.getSharingPairs();
-            Set<AliasPair> definiteAliases = AliasPairAnalyzer.getDefiniteAliases();
-            Set<CyclicVariable> cyclicVars = CyclicVariableAnalyzer.analyze(state);
+        boolean noLoop;
 
-            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, state.getLocalVariablesSize());
-            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, state.getStackSize());
-            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS, sharingPairs);
-            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS, definiteAliases);
-            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS, cyclicVars);
+        for (BytecodeInstruction instruction : instructions) {
+            int localVarsCount = state.getLocalVariablesSize();
+            int stackSize = state.getStackSize();
+            Object analyzeResult = analysisRunner.getCurrentAnalysisResults();
+            JVMState oldState = state.deepCopy();
 
             String instructionLabel = instruction.getLabel();
-            System.out.println(
-                    "  " + instruction + (instructionLabel.isEmpty() ? "" : " [" + instructionLabel + "]"));
 
             if (instruction instanceof CallInstruction) {
-                ((CallInstruction) instruction).setProgram(program);
+                instruction.setAnalysisRunner(analysisRunner);
             }
 
-            if (Constants.ENABLE_FILE_GENERATION) {
-                String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + methodCallId;
-                MemoryGraphGenerator.generateMemoryGraph(state, memoryGraphPath, instruction,
-                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+            boolean result = instruction.execute(state);
+
+            if (instruction instanceof CallInstruction) {
+                analysisRunner.setCurrentMethodCall(methodCallId);
+                instruction.setAnalysisRunner(analysisRunner);
             }
 
-            boolean result = instruction.execute(state); // Execute the instruction
+            if (result) {
+                noLoop = analysisRunner.analyze(instruction);
 
-            if (!result) {
+                if (noLoop) {
+                    instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, localVarsCount);
+                    instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, stackSize);
+                    analysisRunner.addAnalysisResultToInstruction(instruction, analyzeResult);
+
+                    System.out.println(
+                            "  " + instruction + (instructionLabel.isEmpty()));
+
+                    if (Constants.ENABLE_FILE_GENERATION) {
+                        String analysisName = analysisRunner.getName().replaceAll("\\s+",
+                                "_").toLowerCase();
+                        String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + analysisName + "_" + this.methodCallId;
+                        MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction,
+                                Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+                    }
+                } else {
+                    System.out.println("  Analysis failed");
+                    return null;
+                }
+            } else {
                 System.out.println("  Instruction execution failed");
-                // System.out.println(state.toDetailedString());
+                instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, localVarsCount);
+                instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, stackSize);
+                analysisRunner.addAnalysisResultToInstruction(instruction, analyzeResult);
+
+                System.out.println(
+                        "  " + instruction + (instructionLabel.isEmpty()));
+
+                if (Constants.ENABLE_FILE_GENERATION) {
+                    String analysisName = analysisRunner.getName().replaceAll("\\s+",
+                            "_").toLowerCase();
+                    String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + analysisName + "_" + this.methodCallId;
+                    MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction,
+                            Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+                }
                 return null;
             }
 
-            if (instruction instanceof CallInstruction) {
-                SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
-                AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
-                CyclicVariableAnalyzer.setCurrentMethodCall(methodCallId);
+            if (!result) {
+                System.out.println("  Instruction execution failed");
+                return null;
             }
-            AliasPairAnalyzer.analyze(instruction);
-            SharingPairAnalyzer.analyze(instruction);
         }
 
         return state;
@@ -388,5 +384,9 @@ public class Method {
      */
     private String cleanString(String input) {
         return input.replaceAll("[^a-zA-Z0-9_]", "_");
+    }
+
+    public BasicBlock getStartBlock() {
+        return this.cfg.getBlocks().get(0);
     }
 }

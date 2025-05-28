@@ -80,7 +80,7 @@ public class AliasingState {
                 (pair.getVar1().equals(var2) && pair.getVar2().equals(var1)));
     }
 
-    private void computeTransitiveClosure() {
+    void computeTransitiveClosure() {
         Set<AliasPair> newAliases = new HashSet<>();
         boolean changed;
 
@@ -217,6 +217,65 @@ public class AliasingState {
     public int hashCode() {
         int result = aliasPairs.hashCode();
         result = 31 * result + abstractStack.hashCode();
+        return result;
+    }
+
+    /**
+     * Creates a deep copy of this AliasingState.
+     *
+     * This method creates a new AliasingState instance with deep copies of all
+     * alias pairs
+     * and abstract stack elements from the current instance. Modifications to the
+     * returned instance or its contents will not affect the original.
+     *
+     * @return A new AliasingState instance that is a deep copy of this one
+     */
+    public AliasingState deepCopy() {
+        AliasingState copy = new AliasingState();
+
+        // Deep copy of alias pairs
+        for (AliasPair pair : this.aliasPairs) {
+            copy.aliasPairs.add(new AliasPair(pair.getVar1(), pair.getVar2()));
+        }
+
+        // Deep copy of stack (String is immutable, so no need to clone strings)
+        copy.abstractStack.addAll(this.abstractStack);
+
+        return copy;
+    }
+
+    public AliasingState union(AliasingState other) {
+        AliasingState result = new AliasingState();
+
+        result.aliasPairs.addAll(this.aliasPairs);
+        result.aliasPairs.addAll(other.aliasPairs);
+
+        result.abstractStack.addAll(this.abstractStack);
+        for (String var : other.abstractStack) {
+            if (!result.abstractStack.contains(var)) {
+                result.abstractStack.add(var);
+            }
+        }
+
+        result.computeTransitiveClosure();
+        return result;
+    }
+
+    public AliasingState intersection(AliasingState other) {
+        AliasingState result = new AliasingState();
+
+        for (AliasPair pair : this.aliasPairs) {
+            if (other.aliasPairs.contains(pair)) {
+                result.aliasPairs.add(pair);
+            }
+        }
+
+        for (String var : this.abstractStack) {
+            if (other.abstractStack.contains(var)) {
+                result.abstractStack.add(var);
+            }
+        }
+
         return result;
     }
 }

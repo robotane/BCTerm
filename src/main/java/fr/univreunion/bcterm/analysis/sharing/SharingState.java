@@ -49,10 +49,6 @@ public class SharingState {
         this.abstractStack.addAll(other.abstractStack);
     }
 
-    public SharingState copy() {
-        return new SharingState(this);
-    }
-
     public void reset() {
         sharingPairs.clear();
         abstractStack.clear();
@@ -130,6 +126,14 @@ public class SharingState {
         return sb.toString();
     }
 
+    // copy
+    public SharingState copy() {
+        SharingState copy = new SharingState();
+        copy.sharingPairs.addAll(this.sharingPairs);
+        copy.abstractStack.addAll(this.abstractStack);
+        return copy;
+    }
+
     @Override
     public String toString() {
         return "SharingState{" +
@@ -201,5 +205,48 @@ public class SharingState {
 
     public void removeSharingPairsFor(String var) {
         sharingPairs.removeIf(pair -> pair.getVar1().equals(var) || pair.getVar2().equals(var));
+    }
+
+    SharingState deepCopy() {
+        SharingState copy = new SharingState();
+        for (SharingPair pair : sharingPairs) {
+            copy.sharingPairs.add(new SharingPair(pair.getVar1(), pair.getVar2()));
+        }
+        return copy;
+    }
+
+    public SharingState union(SharingState other) {
+        SharingState result = new SharingState();
+
+        result.sharingPairs.addAll(this.sharingPairs);
+        result.sharingPairs.addAll(other.sharingPairs);
+
+        result.abstractStack.addAll(this.abstractStack);
+        for (String var : other.abstractStack) {
+            if (!result.abstractStack.contains(var)) {
+                result.abstractStack.add(var);
+            }
+        }
+
+        result.computeTransitiveClosure();
+        return result;
+    }
+
+    public SharingState intersection(SharingState other) {
+        SharingState result = new SharingState();
+
+        for (SharingPair pair : this.sharingPairs) {
+            if (other.sharingPairs.contains(pair)) {
+                result.sharingPairs.add(pair);
+            }
+        }
+
+        for (String var : this.abstractStack) {
+            if (other.abstractStack.contains(var)) {
+                result.abstractStack.add(var);
+            }
+        }
+
+        return result;
     }
 }

@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.util.Constants;
 
@@ -143,16 +144,33 @@ public class Program {
         this.mainMethodName = methodName;
     }
 
-    public Set<JVMState> execute(String methodName, JVMState initialState) {
+    /**
+     * Executes a specific method of the program with the given interpreter.
+     *
+     * @param methodName   The name of the method to execute
+     * @param initialState The initial JVM state
+     * @param interpreter  The interpreter to use for analysis
+     * @return The set of final JVM states after execution
+     * @throws IllegalArgumentException if the specified method does not exist in
+     *                                  the program
+     */
+    public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisRunner interpreter) {
         if (!methods.containsKey(methodName)) {
             throw new IllegalArgumentException("Method " + methodName + " does not exist in this program");
         }
 
-        return methods.get(methodName).execute(initialState);
+        return methods.get(methodName).execute(initialState, interpreter);
     }
 
-    public Set<JVMState> execute(JVMState initialState) {
-        return execute(mainMethodName, initialState);
+    /**
+     * Executes the main method of the program with the given interpreter.
+     *
+     * @param initialState The initial JVM state
+     * @param interpreter  The interpreter to use for analysis
+     * @return The set of final JVM states after execution
+     */
+    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner interpreter) {
+        return execute(mainMethodName, initialState, interpreter);
     }
 
     @Override

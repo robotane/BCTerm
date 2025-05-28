@@ -70,20 +70,10 @@ public class SharingPairAnalyzer {
         return currentMethodCall;
     }
 
-    /**
-     * Gets a unique identifier for a method call
-     * 
-     * @param methodName The name of the method
-     * @return A unique identifier for this method call
-     */
-    public static String getNextMethodCallId(String methodName) {
-        int count = methodCallCounters.getOrDefault(methodName, 0) + 1;
-        methodCallCounters.put(methodName, count);
-
-        return methodName + "_call" + count;
-    }
-
     public static Set<SharingPair> getCurrentSharingPairs() {
+        if (currentState == null) {
+            return new HashSet<>();
+        }
         return new HashSet<>(currentState.getSharingPairs());
     }
 
@@ -142,7 +132,7 @@ public class SharingPairAnalyzer {
         if (currentState == null) {
             return new HashSet<>();
         }
-        return currentState.getSharingPairs();
+        return new HashSet<>(currentState.getSharingPairs());
     }
 
     /**
@@ -312,6 +302,14 @@ public class SharingPairAnalyzer {
             return false;
         }
         return currentState.mayShare(var1, var2);
+    }
+
+    static SharingState getCurrentSharingState() {
+        return currentState;
+    }
+
+    static void setCurrentSharingState(SharingState lub) {
+        currentState = lub;
     }
 
 }

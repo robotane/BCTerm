@@ -11,11 +11,8 @@ import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
-import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
 import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
-import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
 import fr.univreunion.bcterm.jvm.state.JVMObject;
@@ -505,9 +502,8 @@ public class MemoryGraphGenerator {
     private static String addSharingPairs(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
             boolean finalResult) {
         @SuppressWarnings("unchecked")
-        Set<SharingPair> sharingPairs = finalResult ? SharingPairAnalyzer.getCurrentSharingPairs()
-                : (Set<SharingPair>) instruction
-                        .getAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS);
+        Set<SharingPair> sharingPairs = (Set<SharingPair>) instruction
+                .getAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS);
 
         dotContent.append("\n // Sharing pairs\n");
         dotContent.append(" subgraph cluster_sharing_").append(timestamp).append(" {\n");
@@ -536,9 +532,8 @@ public class MemoryGraphGenerator {
     private static String addAliasPairs(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
             boolean finalResult) {
         @SuppressWarnings("unchecked")
-        Set<AliasPair> aliasPairs = finalResult ? AliasPairAnalyzer.getDefiniteAliases()
-                : (Set<AliasPair>) instruction
-                        .getAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS);
+        Set<AliasPair> aliasPairs = (Set<AliasPair>) instruction
+                .getAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS);
 
         dotContent.append("\n    // Alias pairs\n");
         dotContent.append("    subgraph cluster_aliases_").append(timestamp).append(" {\n");
@@ -568,8 +563,8 @@ public class MemoryGraphGenerator {
     private static String addCyclicVariables(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
             boolean finalResult) {
         @SuppressWarnings("unchecked")
-        Set<CyclicVariable> cyclicVars = finalResult ? CyclicVariableAnalyzer.getCyclicVariables()
-                : (Set<CyclicVariable>) instruction.getAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS);
+        Set<CyclicVariable> cyclicVars = (Set<CyclicVariable>) instruction
+                .getAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS);
 
         dotContent.append("\n // Cyclic variables\n");
         dotContent.append(" subgraph cluster_cyclic_").append(timestamp).append(" {\n");

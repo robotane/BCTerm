@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.Value;
 import fr.univreunion.bcterm.program.Method;
@@ -36,6 +37,7 @@ public class CallInstruction extends BytecodeInstruction {
     private String signature;
     private List<String> implementationClasses; // Remplace className
     private Program program;
+    private AbstractAnalysisRunner analysisRunner;
 
     /**
      * Constructs a CallInstruction by parsing a call string containing method
@@ -123,6 +125,10 @@ public class CallInstruction extends BytecodeInstruction {
         this.program = programme;
     }
 
+    public void setAnalysisRunner(AbstractAnalysisRunner analysisRunner) {
+        this.analysisRunner = analysisRunner;
+    }
+
     @Override
     public boolean execute(JVMState initialState) {
         if (program == null) {
@@ -172,7 +178,7 @@ public class CallInstruction extends BytecodeInstruction {
             methodState.setLocalVariable(i, paramValues[i]);
         }
 
-        Set<JVMState> finalStates = program.execute(this.methodName, methodState);
+        Set<JVMState> finalStates = program.execute(this.methodName, methodState, analysisRunner);
 
         if (finalStates != null && !finalStates.isEmpty()) {
             JVMState finalState = finalStates.iterator().next();
