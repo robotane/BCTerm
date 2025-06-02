@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
@@ -103,10 +104,8 @@ public class Method {
     }
 
     public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner analysisRunner) {
-        // Utiliser l'interpréteur pour générer un ID de méthode unique
         this.methodCallId = analysisRunner.generateMethodCallId(name);
 
-        // Configurer l'interpréteur avec cet ID
         analysisRunner.setCurrentMethodCall(this.methodCallId);
 
         System.out.println("\nExecuting method " + name + " with " + analysisRunner.getName());
@@ -147,7 +146,7 @@ public class Method {
             finalStates.add(stateAfterBlock.deepCopy());
         } else {
             for (BasicBlock nextBlock : nextBlocks) {
-                executeRecursive(nextBlock, stateAfterBlock.deepCopy(), finalStates,
+                executeRecursive(nextBlock, stateAfterBlock, finalStates,
                         new HashSet<>(visitedInPath), analysisRunner);
             }
         }
@@ -166,7 +165,7 @@ public class Method {
             return null;
         }
 
-        boolean noLoop;
+        boolean noLoop = true;
 
         for (BytecodeInstruction instruction : instructions) {
             int localVarsCount = state.getLocalVariablesSize();
@@ -189,47 +188,35 @@ public class Method {
 
             if (result) {
                 noLoop = analysisRunner.analyze(instruction);
-
-                if (noLoop) {
-                    instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, localVarsCount);
-                    instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, stackSize);
-                    analysisRunner.addAnalysisResultToInstruction(instruction, analyzeResult);
-
-                    System.out.println(
-                            "  " + instruction + (instructionLabel.isEmpty()));
-
-                    if (Constants.ENABLE_FILE_GENERATION) {
-                        String analysisName = analysisRunner.getName().replaceAll("\\s+",
-                                "_").toLowerCase();
-                        String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + analysisName + "_" + this.methodCallId;
-                        MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction,
-                                Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
-                    }
-                } else {
+                if (!noLoop) {
                     System.out.println("  Analysis failed");
-                    return null;
+                } else {
+                    System.out.println("  " + instruction + " " + instructionLabel);
                 }
             } else {
                 System.out.println("  Instruction execution failed");
-                instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, localVarsCount);
-                instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, stackSize);
-                analysisRunner.addAnalysisResultToInstruction(instruction, analyzeResult);
-
-                System.out.println(
-                        "  " + instruction + (instructionLabel.isEmpty()));
-
-                if (Constants.ENABLE_FILE_GENERATION) {
-                    String analysisName = analysisRunner.getName().replaceAll("\\s+",
-                            "_").toLowerCase();
-                    String memoryGraphPath = Constants.MEMORY_GRAPH_PREFIX + analysisName + "_" + this.methodCallId;
-                    MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction,
-                            Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
-                }
-                return null;
+                System.out.println("  " + instruction + " " + instructionLabel);
             }
 
-            if (!result) {
-                System.out.println("  Instruction execution failed");
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, localVarsCount);
+            instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, stackSize);
+            analysisRunner.addAnalysisResultToInstruction(instruction, analyzeResult);
+
+            if (Constants.ENABLE_FILE_GENERATION) {
+                String analysisName = analysisRunner.getName().replaceAll("\\s+", "_").toLowerCase();
+                String programName = program.getName();
+                String memoryGraphPath = programName + File.separator + analysisName + File.separator
+                        + Constants.MEMORY_GRAPH_PREFIX + this.methodCallId;
+
+                MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction,
+                        Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
+            }
+
+            if (Objects.equals(name, "size")) {
+                System.out.println();
+            }
+
+            if (!result || !noLoop) {
                 return null;
             }
         }
@@ -322,9 +309,11 @@ public class Method {
     public void saveToFile(String labelKey, String extension) {
         String dot = toDOT(-1, labelKey);
         String filename = cleanString(name);
+        String programName = program.getName();
+        String programDir = Constants.GENERATED_DIR + File.separator + programName;
 
         try {
-            File generatedDir = new File(Constants.GENERATED_DIR);
+            File generatedDir = new File(programDir);
             if (!generatedDir.exists()) {
                 generatedDir.mkdirs();
             }

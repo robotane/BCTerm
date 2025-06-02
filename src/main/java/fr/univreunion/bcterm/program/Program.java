@@ -222,14 +222,14 @@ public class Program {
     public void saveToFile(String labelKey, String extension) {
         String dot = toDOT(labelKey);
         String filename = this.name;
+        String programDir = Constants.GENERATED_DIR + File.separator + this.name;
+
         try {
-            // Create generated directory if it doesn't exist
-            File generatedDir = new File(Constants.GENERATED_DIR);
+            File generatedDir = new File(programDir);
             if (!generatedDir.exists()) {
                 generatedDir.mkdirs();
             }
 
-            // Write DOT content to file
             File dotFile = new File(generatedDir, filename + Constants.DOT_FILE_EXTENSION);
             File outputFile = new File(generatedDir, filename + "." + extension);
             try (FileWriter writer = new FileWriter(dotFile)) {
@@ -239,7 +239,6 @@ public class Program {
                 System.err.println("Error generating dot file: " + e.getMessage());
             }
 
-            // Generate output using dot command
             ProcessBuilder pb = new ProcessBuilder(
                     Constants.DOT_COMMAND,
                     Constants.DOT_TYPE_FLAG_PREFIX + extension,

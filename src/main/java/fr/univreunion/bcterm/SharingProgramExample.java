@@ -2,7 +2,11 @@ package fr.univreunion.bcterm;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +33,7 @@ import fr.univreunion.bcterm.program.BasicBlock;
 import fr.univreunion.bcterm.program.CFG;
 import fr.univreunion.bcterm.program.Program;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.MemoryGraphGenerator;
 
 public class SharingProgramExample {
 
@@ -328,26 +333,27 @@ public class SharingProgramExample {
         Program program = createSharingProgram();
         System.out.println(program);
 
+        String programName = program.getName();
+        String programDir = Constants.GENERATED_DIR + File.separator + programName;
+
         if (Constants.ENABLE_FILE_GENERATION) {
-            // Delete all existing memoryGraph_*.dot files
-            File dir = new File(Constants.GENERATED_DIR);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            File[] dotFiles = dir.listFiles((d, name) -> name.startsWith(Constants.MEMORY_GRAPH_PREFIX)
-                    && name.endsWith(Constants.DOT_FILE_EXTENSION));
-            if (dotFiles != null) {
-                for (File file : dotFiles) {
-                    file.delete();
+            try {
+                Path programPath = Paths.get(programDir);
+                if (Files.exists(programPath)) {
+                    Files.walk(programPath)
+                            .sorted(Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(File::delete);
                 }
+                Files.createDirectories(programPath);
+            } catch (IOException e) {
+                System.err.println("Error cleaning program directory: " + e.getMessage());
             }
         }
 
         JVMState initialState = new JVMState();
-        // Initialize local variable 0 with null to represent args
         initialState.setLocalVariable(0, Value.NULL);
 
-        // Execute aliasing analysis
         System.out.println("\n========================================");
         System.out.println("EXECUTING PROGRAM WITH ALIASING ANALYSIS");
         System.out.println("========================================\n");
@@ -362,7 +368,6 @@ public class SharingProgramExample {
             System.out.println(state.toDetailedString());
         }
 
-        // Display aliasing analysis results
         System.out.println("\nAliasing analysis results:");
         for (Map.Entry<String, Map<BytecodeInstruction, AliasingState>> methodEntry : aliasingAnalysisRunner
                 .getMethodInstructionStates().entrySet()) {
@@ -373,11 +378,9 @@ public class SharingProgramExample {
             }
         }
 
-        // Reset initial state for next analysis
         initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        // Execute sharing analysis
         System.out.println("\n========================================");
         System.out.println("EXECUTING PROGRAM WITH SHARING ANALYSIS");
         System.out.println("========================================\n");
@@ -392,7 +395,6 @@ public class SharingProgramExample {
             System.out.println(state.toDetailedString());
         }
 
-        // Display sharing analysis
         System.out.println("\nSharing analysis results:");
         for (Map.Entry<String, Map<BytecodeInstruction, SharingState>> methodEntry : sharingAnalysisRunner
                 .getMethodInstructionStates().entrySet()) {
@@ -407,32 +409,8 @@ public class SharingProgramExample {
             program.getMethod("expand").saveToFile();
             program.saveToFile("sharingPairs");
 
-            // Generate graphics for all memoryGraph_*.dot files
-            File dir = new File(Constants.GENERATED_DIR);
-            File[] dotFiles = dir.listFiles((d, name) -> name.startsWith(Constants.MEMORY_GRAPH_PREFIX)
-                    && name.endsWith(Constants.DOT_FILE_EXTENSION));
-            if (dotFiles != null) {
-                for (File dotFile : dotFiles) {
-                    String baseName = dotFile.getName().substring(0,
-                            dotFile.getName().length() - Constants.DOT_FILE_EXTENSION.length());
-                    try {
-                        ProcessBuilder pbDefault = new ProcessBuilder(
-                                Constants.DOT_COMMAND,
-                                Constants.DOT_TYPE_FLAG_PREFIX + Constants.DEFAULT_GRAPH_EXTENSION,
-                                dotFile.getAbsolutePath(),
-                                Constants.DOT_OUTPUT_FLAG,
-                                new File(Constants.GENERATED_DIR, baseName + "." + Constants.DEFAULT_GRAPH_EXTENSION)
-                                        .getAbsolutePath());
-                        Process pDefault = pbDefault.start();
-                        pDefault.waitFor();
-                        System.out.println(
-                                "Generated " + dotFile + "." + Constants.DEFAULT_GRAPH_EXTENSION
-                                        + " successfully.");
-                    } catch (IOException | InterruptedException e) {
-                        System.err.println("Error generating files from " + dotFile.getName() + ": " + e.getMessage());
-                    }
-                }
-            }
+            // Generate images from all DOT files in the program directory
+            MemoryGraphGenerator.generateImagesFromDotFiles(programDir);
         }
     }
 }

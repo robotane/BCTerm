@@ -677,4 +677,106 @@ public class MemoryGraphGenerator {
             return false;
         }
     }
+
+    /**
+     * Generates images from all DOT files in a directory and its subdirectories.
+     * 
+     * @param baseDirectory The base directory to search for DOT files
+     * @return true if all conversions were successful, false otherwise
+     */
+    public static boolean generateImagesFromDotFiles(String baseDirectory) {
+        return generateImagesFromDotFiles(baseDirectory, Constants.DEFAULT_GRAPH_EXTENSION);
+    }
+
+    /**
+     * Generates images from all DOT files in a directory and its subdirectories.
+     * 
+     * @param baseDirectory The base directory to search for DOT files
+     * @param extension     The output image format (png, svg, pdf, etc.)
+     * @return true if all conversions were successful, false otherwise
+     */
+    public static boolean generateImagesFromDotFiles(String baseDirectory, String extension) {
+        try {
+            File baseDir = new File(baseDirectory);
+            if (!baseDir.exists() || !baseDir.isDirectory()) {
+                System.err.println("Base directory doesles not exist: " + baseDirectory);
+                return false;
+            }
+
+            return processDirectoryRecursively(baseDir, extension);
+        } catch (Exception e) {
+            System.err.println("Error generating images from DOT files: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Recursively processes a directory to find and convert DOT files.
+     * 
+     * @param directory The directory to process
+     * @param extension The output image format
+     * @return true if all conversions in this directory were successful
+     */
+    private static boolean processDirectoryRecursively(File directory, String extension) {
+        boolean allSuccessful = true;
+
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return true;
+        }
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                // Recursively process subdirectories
+                if (!processDirectoryRecursively(file, extension)) {
+                    allSuccessful = false;
+                }
+            } else if (file.getName().endsWith(Constants.DOT_FILE_EXTENSION)) {
+                // Convert DOT file to image
+                if (!convertDotToImage(file, extension)) {
+                    allSuccessful = false;
+                }
+            }
+        }
+
+        return allSuccessful;
+    }
+
+    /**
+     * Converts a single DOT file to an image.
+     * 
+     * @param dotFile   The DOT file to convert
+     * @param extension The output image format
+     * @return true if conversion was successful, false otherwise
+     */
+    private static boolean convertDotToImage(File dotFile, String extension) {
+        try {
+            String baseName = dotFile.getName().substring(0,
+                    dotFile.getName().length() - Constants.DOT_FILE_EXTENSION.length());
+            File outputFile = new File(dotFile.getParent(), baseName + "." + extension);
+
+            ProcessBuilder pb = new ProcessBuilder(
+                    Constants.DOT_COMMAND,
+                    Constants.DOT_TYPE_FLAG_PREFIX + extension,
+                    dotFile.getAbsolutePath(),
+                    Constants.DOT_OUTPUT_FLAG,
+                    outputFile.getAbsolutePath());
+
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0) {
+                System.out.println("Generated " + outputFile.getName() + " successfully in " + dotFile.getParent());
+                return true;
+            } else {
+                System.err
+                        .println("Error generating image from " + dotFile.getName() + " (exit code: " + exitCode + ")");
+                return false;
+            }
+        } catch (IOException | InterruptedException e) {
+            System.err.println("Error generating image from " + dotFile.getName() + ": " + e.getMessage());
+            return false;
+        }
+    }
 }
