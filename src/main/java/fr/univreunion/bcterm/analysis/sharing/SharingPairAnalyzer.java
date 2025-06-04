@@ -304,12 +304,7 @@ public class SharingPairAnalyzer {
         return currentState.mayShare(var1, var2);
     }
 
-    static SharingState getCurrentSharingState() {
+    public static SharingState getCurrentState() {
         return currentState;
     }
-
-    static void setCurrentSharingState(SharingState lub) {
-        currentState = lub;
-    }
-
 }

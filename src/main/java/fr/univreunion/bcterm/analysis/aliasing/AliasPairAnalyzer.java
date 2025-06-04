@@ -47,7 +47,6 @@ public class AliasPairAnalyzer {
         methodStates.putIfAbsent(methodCallId, new AliasingState());
         currentState = methodStates.get(methodCallId);
 
-        // Added for interpreter functionality
         methodInstructionStates.putIfAbsent(methodCallId, new HashMap<>());
         currentInstructionState = methodInstructionStates.get(methodCallId);
     }
@@ -61,7 +60,6 @@ public class AliasPairAnalyzer {
         currentMethodCall = null;
         currentState = null;
 
-        // Added for interpreter functionality
         methodInstructionStates.clear();
         currentInstructionState = null;
     }
@@ -136,60 +134,6 @@ public class AliasPairAnalyzer {
         execute(instruction, state);
     }
 
-    /**
-     * Analyzes a bytecode instruction and updates the aliasing state.
-     * This method implements the interpreter functionality by tracking
-     * instruction states and computing LUBs when needed.
-     *
-     * @param instruction The bytecode instruction to execute
-     * @return true if the aliasing state changed, false otherwise
-     */
-    public static boolean analyze(BytecodeInstruction instruction) {
-        if (currentMethodCall == null) {
-            System.out.println("Warning: No current method set for alias analysis");
-            return false;
-        }
-
-        AliasPairAnalyzer.execute(instruction);
-        AliasingState newState = AliasPairAnalyzer.getCurrentState().deepCopy();
-
-        if(currentInstructionState.containsKey(instruction)) {
-            System.out.println("Warning: Instruction already analyzed");
-            System.out.println("Before: "+currentInstructionState.get(instruction));
-            AliasingState oldState = currentInstructionState.get(instruction);
-            System.out.println("After: "+newState);
-
-            AliasingState lub = computeLUB(oldState, newState);
-            System.out.println("LUB: "+lub);
-            if (lub.getAliasPairs().equals(oldState.getAliasPairs())) {
-                return false;
-            }
-        }
-
-        currentInstructionState.put(instruction, newState);
-        return true;
-    }
-
-    /**
-     * Computes the least upper bound (LUB) of two aliasing states.
-     *
-     * @param state1 The first aliasing state
-     * @param state2 The second aliasing state
-     * @return A new aliasing state representing the LUB of the input states
-     */
-    private static AliasingState computeLUB(AliasingState state1, AliasingState state2) {
-        AliasingState result = state1.deepCopy();
-
-        // Ajouter toutes les paires d'alias de state2 à result
-        for (AliasPair pair : state2.getAliasPairs()) {
-            result.addAliasPair(pair.getVar1(), pair.getVar2());
-        }
-
-        // Calculer la fermeture transitive pour assurer la cohérence
-        result.computeTransitiveClosure();
-
-        return result;
-    }
     private static void handleLoadInstruction(LoadInstruction loadInst, AliasingState state) {
         int localIndex = loadInst.getIndex();
         String localVar = "l" + localIndex;
@@ -224,6 +168,7 @@ public class AliasPairAnalyzer {
         String resultVar = "s" + state.getStackSize();
 
         state.pushToStack(resultVar);
+        // TDOD: Fix this, it should add alias pairs
 
         state.removeAliasesFor(resultVar);
     }
@@ -283,16 +228,10 @@ public class AliasPairAnalyzer {
         }
     }
 
-    /**
-     * Vérifie si deux variables sont des alias dans l'état courant.
-     */
     public static boolean areAliases(String var1, String var2) {
         return getCurrentState().areAliases(var1, var2);
     }
 
-    /**
-     * Récupère toutes les variables qui sont des alias d'une variable donnée.
-     */
     public static Set<String> getAliasesOf(String var) {
         Set<String> aliases = new HashSet<>();
         Set<AliasPair> aliasPairs = getDefiniteAliases();

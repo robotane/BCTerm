@@ -155,11 +155,16 @@ public class Program {
      *                                  the program
      */
     public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisRunner interpreter) {
+        return execute(methodName, initialState, interpreter, null);
+    }
+
+    public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisRunner interpreter,
+            String methodCallId) {
         if (!methods.containsKey(methodName)) {
             throw new IllegalArgumentException("Method " + methodName + " does not exist in this program");
         }
 
-        return methods.get(methodName).execute(initialState, interpreter);
+        return methods.get(methodName).execute(initialState, interpreter, methodCallId);
     }
 
     /**
@@ -170,7 +175,7 @@ public class Program {
      * @return The set of final JVM states after execution
      */
     public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner interpreter) {
-        return execute(mainMethodName, initialState, interpreter);
+        return execute(mainMethodName, initialState, interpreter, null);
     }
 
     @Override

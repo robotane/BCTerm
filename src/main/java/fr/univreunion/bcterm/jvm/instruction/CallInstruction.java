@@ -7,6 +7,12 @@ import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
+import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
+import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
+import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.sharing.SharingPair;
+import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.Value;
 import fr.univreunion.bcterm.program.Method;
@@ -125,6 +131,7 @@ public class CallInstruction extends BytecodeInstruction {
         this.program = programme;
     }
 
+    @Override
     public void setAnalysisRunner(AbstractAnalysisRunner analysisRunner) {
         this.analysisRunner = analysisRunner;
     }
@@ -145,6 +152,7 @@ public class CallInstruction extends BytecodeInstruction {
             System.out.println("Error: Not enough parameters on stack");
             return false;
         }
+        int initialStackSize = initialState.getStackSize();
 
         Value[] paramValues = new Value[paramCount + 1];
         for (int i = paramCount; i >= 0; i--) {
@@ -178,7 +186,28 @@ public class CallInstruction extends BytecodeInstruction {
             methodState.setLocalVariable(i, paramValues[i]);
         }
 
-        Set<JVMState> finalStates = program.execute(this.methodName, methodState, analysisRunner);
+        // Propagate analysis relationships from stack variables to local variables
+        List<Object> propagatedResults = propagateAnalysisRelationships(paramCount, initialStackSize);
+        String methodCallId = null;
+        if (analysisRunner != null) {
+            methodCallId = analysisRunner.generateMethodCallId(this.methodName);
+            analysisRunner.setCurrentMethodCall(methodCallId);
+            System.out.println("Method call ID: " + methodCallId);
+            System.out.println("Propagated results: " + propagatedResults);
+            if (!propagatedResults.isEmpty()) {
+                for (Object result : propagatedResults) {
+                    if (result instanceof AliasPair && analysisRunner instanceof AliasingAnalysisRunner) {
+                        AliasPair pair = (AliasPair) result;
+                        AliasPairAnalyzer.getCurrentState().addAliasPair(pair.getVar1(), pair.getVar2());
+                    } else if (result instanceof SharingPair && analysisRunner instanceof SharingAnalysisRunner) {
+                        SharingPair pair = (SharingPair) result;
+                        SharingPairAnalyzer.getCurrentState().addSharingPair(pair.getVar1(), pair.getVar2());
+                    }
+                }
+            }
+        }
+
+        Set<JVMState> finalStates = program.execute(this.methodName, methodState, analysisRunner, methodCallId);
 
         if (finalStates != null && !finalStates.isEmpty()) {
             JVMState finalState = finalStates.iterator().next();
@@ -279,5 +308,66 @@ public class CallInstruction extends BytecodeInstruction {
     public String getReturnType() {
         Map<String, Object> signatureInfo = parseSignature(this.signature);
         return (String) signatureInfo.get("returnType");
+    }
+
+    /**
+     * Propagates analysis relationships from stack variables (sk) to local
+     * variables (li).
+     * If two stack variables were related by analysis, the corresponding local
+     * variables
+     * will also be marked as related.
+     * 
+     * @return List of propagated results to be applied to the called method
+     */
+    private List<Object> propagateAnalysisRelationships(int paramCount, int initialStackSize) {
+        List<Object> propagatedResults = new ArrayList<>();
+
+        if (analysisRunner == null) {
+            return propagatedResults;
+        }
+
+        Object analysisResults = analysisRunner.getCurrentAnalysisResults();
+        if (analysisResults == null) {
+            return propagatedResults;
+        }
+
+        // Check relationships between all pairs of stack parameters
+        for (int i = 0; i <= paramCount; i++) {
+            for (int j = i + 1; j <= paramCount; j++) {
+                int stackPos1 = initialStackSize - i;
+                int stackPos2 = initialStackSize - j;
+                String stackVar1 = "s" + stackPos1;
+                String stackVar2 = "s" + stackPos2;
+                String localVar1 = "l" + i;
+                String localVar2 = "l" + j;
+                // Check if stack variables are related and create local relationship if so
+                Object localRelationship = createRelationshipIfExists(stackVar1, stackVar2, localVar1, localVar2);
+                if (localRelationship != null) {
+                    propagatedResults.add(localRelationship);
+                }
+            }
+        }
+
+        return propagatedResults;
+    }
+
+    /**
+     * Checks if two stack variables are related and creates the corresponding local
+     * variable relationship.
+     * 
+     * @return The relationship object if stack variables are related, null
+     *         otherwise
+     */
+    private Object createRelationshipIfExists(String stackVar1, String stackVar2, String localVar1, String localVar2) {
+        if (analysisRunner instanceof AliasingAnalysisRunner) {
+            if (AliasPairAnalyzer.areAliases(stackVar1, stackVar2)) {
+                return new AliasPair(localVar1, localVar2);
+            }
+        } else if (analysisRunner instanceof SharingAnalysisRunner) {
+            if (SharingPairAnalyzer.mayShare(stackVar1, stackVar2)) {
+                return new SharingPair(localVar1, localVar2);
+            }
+        }
+        return null;
     }
 }

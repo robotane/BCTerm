@@ -15,7 +15,7 @@ public class SharingAnalysisRunner implements AbstractAnalysisRunner {
     @Override
     public boolean analyze(BytecodeInstruction instruction) {
         SharingPairAnalyzer.analyze(instruction);
-        SharingState newState = SharingPairAnalyzer.getCurrentSharingState().copy();
+        SharingState newState = SharingPairAnalyzer.getCurrentState().copy();
 
         if (currentInstructionState.containsKey(instruction)) {
             System.out.println("Warning: Instruction already analyzed");

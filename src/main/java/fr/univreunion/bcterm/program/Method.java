@@ -103,9 +103,21 @@ public class Method {
     }
 
     public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner analysisRunner) {
-        this.methodCallId = analysisRunner.generateMethodCallId(name);
+        return execute(initialState, analysisRunner, null);
+    }
 
-        analysisRunner.setCurrentMethodCall(this.methodCallId);
+    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner analysisRunner,
+            String providedMethodCallId) {
+        if (analysisRunner != null) {
+            // Use provided methodCallId if available, otherwise generate one
+            if (providedMethodCallId != null) {
+                this.methodCallId = providedMethodCallId;
+                analysisRunner.setCurrentMethodCall(this.methodCallId);
+            } else {
+                this.methodCallId = analysisRunner.generateMethodCallId(name);
+                analysisRunner.setCurrentMethodCall(this.methodCallId);
+            }
+        }
 
         System.out.println("\nExecuting method " + name + " with " + analysisRunner.getName());
         System.out.println("---------------------------------");
@@ -183,6 +195,7 @@ public class Method {
             if (instruction instanceof CallInstruction) {
                 analysisRunner.setCurrentMethodCall(methodCallId);
                 instruction.setAnalysisRunner(analysisRunner);
+
             }
 
             if (executionSucceeded) {

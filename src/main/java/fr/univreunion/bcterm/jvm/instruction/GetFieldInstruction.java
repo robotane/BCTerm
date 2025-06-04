@@ -52,4 +52,13 @@ public class GetFieldInstruction extends BytecodeInstruction {
     public String toString() {
         return "getfield " + fieldName;
     }
+
+    /**
+     * Gets the name of the field being accessed.
+     * 
+     * @return the field name
+     */
+    public String getFieldName() {
+        return fieldName;
+    }
 }
