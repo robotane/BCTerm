@@ -1,0 +1,7 @@
+digraph process {
+  label="process";
+  node [shape=box];
+  node [shape=box fontname="monospace"];
+  edge [color=blue];
+  process_block1 [label="load 0           \lload 1           \lload 2           \lgetfield next    \lstore 3          \l"];
+}

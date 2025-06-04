@@ -1,0 +1,9 @@
+digraph main {
+  label="main";
+  node [shape=box];
+  node [shape=box fontname="monospace"];
+  edge [color=blue];
+  main_block1 [label="new Object       \lstore 1          \lnew Object       \lstore 2          \lload 2           \lload 1           \lputfield next    \l"];
+  main_block2 [label="new Object                                 \lload 1                                     \lload 2                                     \lgetfield next                              \lcall Object.process(Object,Object):void    \l"];
+  main_block1 -> main_block2;
+}
