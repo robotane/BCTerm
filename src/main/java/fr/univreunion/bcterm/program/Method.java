@@ -188,14 +188,15 @@ public class Method {
 
             if (instruction instanceof CallInstruction) {
                 instruction.setAnalysisRunner(analysisRunner);
+                ((CallInstruction) instruction).pushMethodCallStack(methodCallId);
             }
 
             boolean executionSucceeded = instruction.execute(state);
 
             if (instruction instanceof CallInstruction) {
+                this.methodCallId = ((CallInstruction) instruction).popMethodCallStack();
                 analysisRunner.setCurrentMethodCall(methodCallId);
                 instruction.setAnalysisRunner(analysisRunner);
-
             }
 
             if (executionSucceeded) {

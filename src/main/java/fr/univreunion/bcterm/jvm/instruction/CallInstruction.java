@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
@@ -44,6 +45,7 @@ public class CallInstruction extends BytecodeInstruction {
     private List<String> implementationClasses; // Remplace className
     private Program program;
     private AbstractAnalysisRunner analysisRunner;
+    private Stack<String> methodCallStack = new Stack<>();
 
     /**
      * Constructs a CallInstruction by parsing a call string containing method
@@ -370,4 +372,13 @@ public class CallInstruction extends BytecodeInstruction {
         }
         return null;
     }
+
+    public void pushMethodCallStack(String calleddId) {
+        methodCallStack.push(calleddId);
+    }
+
+    public String popMethodCallStack() {
+        return methodCallStack.pop();
+    }
+
 }
