@@ -1,0 +1,76 @@
+digraph Program {
+  label="LinkedList"
+  node [shape=box fontname="monospace"];
+  edge [color=blue];
+  subgraph cluster_0 {
+    label="getValue";
+    color=black;
+    style=rounded;
+    node [shape=box fontname="monospace"];
+    edge [color=blue];
+    getValue_block1 [label="load 0            \lgetfield value    \l"];
+  }
+  subgraph cluster_1 {
+    label="size";
+    color=black;
+    style=rounded;
+    node [shape=box fontname="monospace"];
+    edge [color=blue];
+    size_block1 [label="load 0           \lgetfield next    \l"];
+    size_block2 [label="ifeq of type LinkedList    \lconst 1                    \l"];
+    size_block3 [label="ifne of type LinkedList    \lconst 1                    \lload 0                     \lgetfield next              \l"];
+    size_block4 [label="call LinkedList.size():int    \ladd                           \l"];
+    size_block1 -> size_block2;
+    size_block1 -> size_block3;
+    size_block3 -> size_block4;
+  }
+  subgraph cluster_2 {
+    label="main";
+    color=black;
+    style=rounded;
+    node [shape=box fontname="monospace"];
+    edge [color=blue];
+    main_block1 [label="new LinkedList    \ldup               \lconst 1           \lconst null        \l"];
+    main_block2 [label="call LinkedList.<init>(int,LinkedList):void    \lstore 1                                        \lload 1                                         \lconst 2                                        \l"];
+    main_block3 [label="call LinkedList.append(int):void    \lload 1                              \lconst 3                             \l"];
+    main_block4 [label="call LinkedList.append(int):void    \lload 1                              \l"];
+    main_block5 [label="call LinkedList.size():int    \lstore 2                       \l"];
+    main_block1 -> main_block2;
+    main_block4 -> main_block5;
+    main_block3 -> main_block4;
+    main_block2 -> main_block3;
+  }
+  subgraph cluster_3 {
+    label="getNext";
+    color=black;
+    style=rounded;
+    node [shape=box fontname="monospace"];
+    edge [color=blue];
+    getNext_block1 [label="load 0           \lgetfield next    \l"];
+  }
+  subgraph cluster_4 {
+    label="<init>";
+    color=black;
+    style=rounded;
+    node [shape=box fontname="monospace"];
+    edge [color=blue];
+    _init__block1 [label="load 0            \lload 1            \lputfield value    \lload 0            \lload 2            \lputfield next     \l"];
+  }
+  subgraph cluster_5 {
+    label="append";
+    color=black;
+    style=rounded;
+    node [shape=box fontname="monospace"];
+    edge [color=blue];
+    append_block1 [label="load 0     \lstore 2    \l"];
+    append_block2 [label="load 2           \lgetfield next    \l"];
+    append_block3 [label="ifne of type LinkedList    \lload 2                     \lgetfield next              \lstore 2                    \l"];
+    append_block4 [label="ifeq of type LinkedList    \lload 2                     \lnew LinkedList             \ldup                        \lload 1                     \lconst null                 \l"];
+    append_block5 [label="call LinkedList.<init>(int,LinkedList):void    \lputfield next                                  \l"];
+    append_block2 -> append_block3;
+    append_block2 -> append_block4;
+    append_block1 -> append_block2;
+    append_block3 -> append_block2;
+    append_block4 -> append_block5;
+  }
+}

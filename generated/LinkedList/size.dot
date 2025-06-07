@@ -1,0 +1,13 @@
+digraph size {
+  label="size";
+  node [shape=box];
+  node [shape=box fontname="monospace"];
+  edge [color=blue];
+  size_block1 [label="load 0           \lgetfield next    \l"];
+  size_block2 [label="ifeq of type LinkedList    \lconst 1                    \l"];
+  size_block3 [label="ifne of type LinkedList    \lconst 1                    \lload 0                     \lgetfield next              \l"];
+  size_block4 [label="call LinkedList.size():int    \ladd                           \l"];
+  size_block1 -> size_block2;
+  size_block1 -> size_block3;
+  size_block3 -> size_block4;
+}

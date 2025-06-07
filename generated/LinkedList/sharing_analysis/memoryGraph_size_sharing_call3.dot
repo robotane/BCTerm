@@ -1,0 +1,325 @@
+digraph MemoryGraph {
+ node [shape=box, style=filled, fillcolor=lightblue];
+ rankdir=LR;
+
+ // Invisible anchor subgraph
+ subgraph cluster_anchor {
+ style=invis;
+ anchor [style=invis, shape=point, width=0, height=0];
+ }
+
+ // Starting point for subgraph ordering
+ anchor_start [style=invis, shape=point];
+
+ anchor_57148601131861 [style=invis, shape=point];
+ anchor_start -> anchor_57148601131861 [style=invis];
+ anchor_start = anchor_57148601131861;
+
+ subgraph cluster_57148601131861 {
+ anchor_57148601131861 [style=invis];
+ label="load 0";
+ subgraph cluster_locals_57148601131861 {
+ label="Local Variables";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightgreen];
+ "l0_57148601131861" [label="l0 = @3"];
+ }
+
+ subgraph cluster_stack_57148601131861 {
+ label="Stack";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightpink];
+ "empty_stack_57148601131861" [label="Empty stack", style=dashed, fillcolor=white];
+ }
+
+ subgraph cluster_memory_57148601131861 {
+ label="Memory";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightyellow];
+ "obj1_57148601131861" [label="Object@1\nLinkedList\n---\nnext = @2\nvalue = 1\n"];
+ "obj2_57148601131861" [label="Object@2\nLinkedList\n---\nnext = @3\nvalue = 2\n"];
+ "obj3_57148601131861" [label="Object@3\nLinkedList\n---\nnext = null\nvalue = 3\n"];
+ }
+
+ "l0_57148601131861" -> "obj3_57148601131861";
+ "obj1_57148601131861" -> "obj2_57148601131861" [label="next"];
+ "obj2_57148601131861" -> "obj3_57148601131861" [label="next"];
+
+ // Sharing pairs
+ subgraph cluster_sharing_57148601131861 {
+ label="Sharing Pairs";
+ node [shape=ellipse, style=filled, fillcolor=lightyellow];
+ "empty_sharing_57148601131861" [label="No sharing", style=dashed, fillcolor=white];
+ }
+
+    // Alias pairs
+    subgraph cluster_aliases_57148601131861 {
+      label="Definite Aliases";
+      node [shape=ellipse, style=filled, fillcolor=lightcyan];
+      "empty_alias_57148601131861" [label="No aliases", style=dashed, fillcolor=white];
+    }
+
+ // Cyclic variables
+ subgraph cluster_cyclic_57148601131861 {
+ label="Cyclic Variables";
+ node [shape=ellipse];
+ "empty_cyclic_57148601131861" [label="No cycle", style=dashed, fillcolor=white];
+ }
+ // Invisible edge for horizontal alignment
+ "empty_sharing_57148601131861" -> "empty_alias_57148601131861" [style=invis, weight=10];
+ // Invisible edge for horizontal alignment
+ "empty_alias_57148601131861" -> "empty_cyclic_57148601131861" [style=invis, weight=10];
+ }
+ anchor_57148601621368 [style=invis, shape=point];
+ anchor_start -> anchor_57148601621368 [style=invis];
+ anchor_start = anchor_57148601621368;
+
+ subgraph cluster_57148601621368 {
+ anchor_57148601621368 [style=invis];
+ label="getfield next";
+ subgraph cluster_locals_57148601621368 {
+ label="Local Variables";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightgreen];
+ "l0_57148601621368" [label="l0 = @3"];
+ }
+
+ subgraph cluster_stack_57148601621368 {
+ label="Stack";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightpink];
+ "s0_57148601621368" [label="s0 = @3"];
+ }
+
+ subgraph cluster_memory_57148601621368 {
+ label="Memory";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightyellow];
+ "obj1_57148601621368" [label="Object@1\nLinkedList\n---\nnext = @2\nvalue = 1\n"];
+ "obj2_57148601621368" [label="Object@2\nLinkedList\n---\nnext = @3\nvalue = 2\n"];
+ "obj3_57148601621368" [label="Object@3\nLinkedList\n---\nnext = null\nvalue = 3\n"];
+ }
+
+ "l0_57148601621368" -> "obj3_57148601621368";
+ "s0_57148601621368" -> "obj3_57148601621368";
+ "obj1_57148601621368" -> "obj2_57148601621368" [label="next"];
+ "obj2_57148601621368" -> "obj3_57148601621368" [label="next"];
+
+ // Sharing pairs
+ subgraph cluster_sharing_57148601621368 {
+ label="Sharing Pairs";
+ node [shape=ellipse, style=filled, fillcolor=lightyellow];
+ "pair0_57148601621368" [label="l0 ↔ s0"];
+ }
+
+    // Alias pairs
+    subgraph cluster_aliases_57148601621368 {
+      label="Definite Aliases";
+      node [shape=ellipse, style=filled, fillcolor=lightcyan];
+      "alias0_57148601621368" [label="l0 = s0"];
+    }
+
+ // Cyclic variables
+ subgraph cluster_cyclic_57148601621368 {
+ label="Cyclic Variables";
+ node [shape=ellipse];
+ "empty_cyclic_57148601621368" [label="No cycle", style=dashed, fillcolor=white];
+ }
+ // Invisible edge for horizontal alignment
+ "pair0_57148601621368" -> "alias0_57148601621368" [style=invis, weight=10];
+ // Invisible edge for horizontal alignment
+ "alias0_57148601621368" -> "empty_cyclic_57148601621368" [style=invis, weight=10];
+ }
+ anchor_57148602545194 [style=invis, shape=point];
+ anchor_start -> anchor_57148602545194 [style=invis];
+ anchor_start = anchor_57148602545194;
+
+ subgraph cluster_57148602545194 {
+ anchor_57148602545194 [style=invis];
+ label="ifeq of type LinkedList";
+ subgraph cluster_locals_57148602545194 {
+ label="Local Variables";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightgreen];
+ "l0_57148602545194" [label="l0 = @3"];
+ }
+
+ subgraph cluster_stack_57148602545194 {
+ label="Stack";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightpink];
+ "s0_57148602545194" [label="s0 = null"];
+ }
+
+ subgraph cluster_memory_57148602545194 {
+ label="Memory";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightyellow];
+ "obj1_57148602545194" [label="Object@1\nLinkedList\n---\nnext = @2\nvalue = 1\n"];
+ "obj2_57148602545194" [label="Object@2\nLinkedList\n---\nnext = @3\nvalue = 2\n"];
+ "obj3_57148602545194" [label="Object@3\nLinkedList\n---\nnext = null\nvalue = 3\n"];
+ }
+
+ "l0_57148602545194" -> "obj3_57148602545194";
+ "obj1_57148602545194" -> "obj2_57148602545194" [label="next"];
+ "obj2_57148602545194" -> "obj3_57148602545194" [label="next"];
+
+ // Sharing pairs
+ subgraph cluster_sharing_57148602545194 {
+ label="Sharing Pairs";
+ node [shape=ellipse, style=filled, fillcolor=lightyellow];
+ "pair0_57148602545194" [label="l0 ↔ s0"];
+ }
+
+    // Alias pairs
+    subgraph cluster_aliases_57148602545194 {
+      label="Definite Aliases";
+      node [shape=ellipse, style=filled, fillcolor=lightcyan];
+      "empty_alias_57148602545194" [label="No aliases", style=dashed, fillcolor=white];
+    }
+
+ // Cyclic variables
+ subgraph cluster_cyclic_57148602545194 {
+ label="Cyclic Variables";
+ node [shape=ellipse];
+ "empty_cyclic_57148602545194" [label="No cycle", style=dashed, fillcolor=white];
+ }
+ // Invisible edge for horizontal alignment
+ "pair0_57148602545194" -> "empty_alias_57148602545194" [style=invis, weight=10];
+ // Invisible edge for horizontal alignment
+ "empty_alias_57148602545194" -> "empty_cyclic_57148602545194" [style=invis, weight=10];
+ }
+ anchor_57148603583339 [style=invis, shape=point];
+ anchor_start -> anchor_57148603583339 [style=invis];
+ anchor_start = anchor_57148603583339;
+
+ subgraph cluster_57148603583339 {
+ anchor_57148603583339 [style=invis];
+ label="const 1";
+ subgraph cluster_locals_57148603583339 {
+ label="Local Variables";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightgreen];
+ "l0_57148603583339" [label="l0 = @3"];
+ }
+
+ subgraph cluster_stack_57148603583339 {
+ label="Stack";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightpink];
+ "empty_stack_57148603583339" [label="Empty stack", style=dashed, fillcolor=white];
+ }
+
+ subgraph cluster_memory_57148603583339 {
+ label="Memory";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightyellow];
+ "obj1_57148603583339" [label="Object@1\nLinkedList\n---\nnext = @2\nvalue = 1\n"];
+ "obj2_57148603583339" [label="Object@2\nLinkedList\n---\nnext = @3\nvalue = 2\n"];
+ "obj3_57148603583339" [label="Object@3\nLinkedList\n---\nnext = null\nvalue = 3\n"];
+ }
+
+ "l0_57148603583339" -> "obj3_57148603583339";
+ "obj1_57148603583339" -> "obj2_57148603583339" [label="next"];
+ "obj2_57148603583339" -> "obj3_57148603583339" [label="next"];
+
+ // Sharing pairs
+ subgraph cluster_sharing_57148603583339 {
+ label="Sharing Pairs";
+ node [shape=ellipse, style=filled, fillcolor=lightyellow];
+ "empty_sharing_57148603583339" [label="No sharing", style=dashed, fillcolor=white];
+ }
+
+    // Alias pairs
+    subgraph cluster_aliases_57148603583339 {
+      label="Definite Aliases";
+      node [shape=ellipse, style=filled, fillcolor=lightcyan];
+      "empty_alias_57148603583339" [label="No aliases", style=dashed, fillcolor=white];
+    }
+
+ // Cyclic variables
+ subgraph cluster_cyclic_57148603583339 {
+ label="Cyclic Variables";
+ node [shape=ellipse];
+ "empty_cyclic_57148603583339" [label="No cycle", style=dashed, fillcolor=white];
+ }
+ // Invisible edge for horizontal alignment
+ "empty_sharing_57148603583339" -> "empty_alias_57148603583339" [style=invis, weight=10];
+ // Invisible edge for horizontal alignment
+ "empty_alias_57148603583339" -> "empty_cyclic_57148603583339" [style=invis, weight=10];
+ }
+ anchor_57148605251029 [style=invis, shape=point];
+ anchor_start -> anchor_57148605251029 [style=invis];
+ anchor_start = anchor_57148605251029;
+
+ subgraph cluster_57148605251029 {
+ anchor_57148605251029 [style=invis];
+ label="ifne of type LinkedList";
+ subgraph cluster_locals_57148605251029 {
+ label="Local Variables";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightgreen];
+ "l0_57148605251029" [label="l0 = @3"];
+ }
+
+ subgraph cluster_stack_57148605251029 {
+ label="Stack";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightpink];
+ "s0_57148605251029" [label="s0 = null"];
+ }
+
+ subgraph cluster_memory_57148605251029 {
+ label="Memory";
+ style=filled;
+ color=lightgrey;
+ node [style=filled, fillcolor=lightyellow];
+ "obj1_57148605251029" [label="Object@1\nLinkedList\n---\nnext = @2\nvalue = 1\n"];
+ "obj2_57148605251029" [label="Object@2\nLinkedList\n---\nnext = @3\nvalue = 2\n"];
+ "obj3_57148605251029" [label="Object@3\nLinkedList\n---\nnext = null\nvalue = 3\n"];
+ }
+
+ "l0_57148605251029" -> "obj3_57148605251029";
+ "obj1_57148605251029" -> "obj2_57148605251029" [label="next"];
+ "obj2_57148605251029" -> "obj3_57148605251029" [label="next"];
+
+ // Sharing pairs
+ subgraph cluster_sharing_57148605251029 {
+ label="Sharing Pairs";
+ node [shape=ellipse, style=filled, fillcolor=lightyellow];
+ "empty_sharing_57148605251029" [label="No sharing", style=dashed, fillcolor=white];
+ }
+
+    // Alias pairs
+    subgraph cluster_aliases_57148605251029 {
+      label="Definite Aliases";
+      node [shape=ellipse, style=filled, fillcolor=lightcyan];
+      "empty_alias_57148605251029" [label="No aliases", style=dashed, fillcolor=white];
+    }
+
+ // Cyclic variables
+ subgraph cluster_cyclic_57148605251029 {
+ label="Cyclic Variables";
+ node [shape=ellipse];
+ "empty_cyclic_57148605251029" [label="No cycle", style=dashed, fillcolor=white];
+ }
+ // Invisible edge for horizontal alignment
+ "empty_sharing_57148605251029" -> "empty_alias_57148605251029" [style=invis, weight=10];
+ // Invisible edge for horizontal alignment
+ "empty_alias_57148605251029" -> "empty_cyclic_57148605251029" [style=invis, weight=10];
+ }
+}
