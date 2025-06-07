@@ -53,7 +53,7 @@ public class MemoryGraphGenerator {
             }
 
             String dotFilePath = new File(generatedDir, outputPath + ".dot").getPath();
-            long timestamp = System.currentTimeMillis();
+            long timestamp = System.nanoTime();
 
             initializeDotFile(dotContent, dotFilePath);
 
