@@ -14,8 +14,8 @@ public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
 
     @Override
     public boolean analyze(BytecodeInstruction instruction) {
-        AliasPairAnalyzer.execute(instruction);
         AliasingState newState = AliasPairAnalyzer.getCurrentState().deepCopy();
+        AliasPairAnalyzer.execute(instruction);
 
         if (currentInstructionState.containsKey(instruction)) {
             System.out.println("Warning: Instruction already analyzed");
@@ -71,7 +71,7 @@ public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
     public String generateMethodCallId(String methodName) {
         int count = methodCallCounters.getOrDefault(methodName, 0) + 1;
         methodCallCounters.put(methodName, count);
-        return methodName + "_aliasing_call" + count;
+        return methodName + "_call" + count;
     }
 
     @Override

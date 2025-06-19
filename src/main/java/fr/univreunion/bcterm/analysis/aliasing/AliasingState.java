@@ -278,4 +278,19 @@ public class AliasingState {
 
         return result;
     }
+
+    public Set<String> getAliasesOf(String var) {
+        Set<String> aliases = new HashSet<>();
+        Set<AliasPair> pairs = getAliasPairs();
+
+        for (AliasPair pair : pairs) {
+            if (pair.getVar1().equals(var)) {
+                aliases.add(pair.getVar2());
+            } else if (pair.getVar2().equals(var)) {
+                aliases.add(pair.getVar1());
+            }
+        }
+
+        return aliases;
+    }
 }

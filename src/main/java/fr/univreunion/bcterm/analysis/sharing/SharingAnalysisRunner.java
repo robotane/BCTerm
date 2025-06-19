@@ -14,8 +14,8 @@ public class SharingAnalysisRunner implements AbstractAnalysisRunner {
 
     @Override
     public boolean analyze(BytecodeInstruction instruction) {
-        SharingPairAnalyzer.analyze(instruction);
         SharingState newState = SharingPairAnalyzer.getCurrentState().copy();
+        SharingPairAnalyzer.execute(instruction);
 
         if (currentInstructionState.containsKey(instruction)) {
             System.out.println("Warning: Instruction already analyzed");
@@ -37,7 +37,7 @@ public class SharingAnalysisRunner implements AbstractAnalysisRunner {
     @Override
     public void setCurrentMethodCall(String methodCallId) {
         methodInstructionStates.putIfAbsent(methodCallId, new HashMap<>());
-        SharingAnalysisRunner.currentInstructionState = methodInstructionStates.get(methodCallId);
+        currentInstructionState = methodInstructionStates.get(methodCallId);
         SharingPairAnalyzer.setCurrentMethodCall(methodCallId);
     }
 
@@ -71,11 +71,16 @@ public class SharingAnalysisRunner implements AbstractAnalysisRunner {
     public String generateMethodCallId(String methodName) {
         int count = methodCallCounters.getOrDefault(methodName, 0) + 1;
         methodCallCounters.put(methodName, count);
-        return methodName + "_sharing_call" + count;
+        return methodName + "_call" + count;
     }
 
     @Override
     public void addAnalysisResultToInstruction(BytecodeInstruction instruction, Object result) {
         instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS, result);
+    }
+
+    public static Map<BytecodeInstruction, SharingState> getMethodInstructionStates(String methodCallId) {
+        System.out.println(methodInstructionStates);
+        return methodInstructionStates.get(methodCallId);
     }
 }
