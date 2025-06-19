@@ -20,9 +20,9 @@ digraph Program {
     size_block2 [label="ifeq of type LinkedList    \lconst 1                    \l"];
     size_block3 [label="ifne of type LinkedList    \lconst 1                    \lload 0                     \lgetfield next              \l"];
     size_block4 [label="call LinkedList.size():int    \ladd                           \l"];
-    size_block1 -> size_block2;
-    size_block1 -> size_block3;
     size_block3 -> size_block4;
+    size_block1 -> size_block3;
+    size_block1 -> size_block2;
   }
   subgraph cluster_2 {
     label="main";
@@ -35,9 +35,9 @@ digraph Program {
     main_block3 [label="call LinkedList.append(int):void    \lload 1                              \lconst 3                             \l"];
     main_block4 [label="call LinkedList.append(int):void    \lload 1                              \l"];
     main_block5 [label="call LinkedList.size():int    \lstore 2                       \l"];
+    main_block3 -> main_block4;
     main_block1 -> main_block2;
     main_block4 -> main_block5;
-    main_block3 -> main_block4;
     main_block2 -> main_block3;
   }
   subgraph cluster_3 {
@@ -67,10 +67,10 @@ digraph Program {
     append_block3 [label="ifne of type LinkedList    \lload 2                     \lgetfield next              \lstore 2                    \l"];
     append_block4 [label="ifeq of type LinkedList    \lload 2                     \lnew LinkedList             \ldup                        \lload 1                     \lconst null                 \l"];
     append_block5 [label="call LinkedList.<init>(int,LinkedList):void    \lputfield next                                  \l"];
-    append_block2 -> append_block3;
     append_block2 -> append_block4;
-    append_block1 -> append_block2;
-    append_block3 -> append_block2;
+    append_block2 -> append_block3;
     append_block4 -> append_block5;
+    append_block3 -> append_block2;
+    append_block1 -> append_block2;
   }
 }

@@ -14,10 +14,10 @@ digraph Program {
     expand_block4 [label="ifne of type Sharing    {(l0,s0),(l2,s0),(l0,l2)}\lload 1                  {(l0,l2)}\lnew Sharing             {(l0,l2),(l1,s0)}\ldup                     {(l0,l2),(l1,s0)}\lconst null              {(s1,s2),(l0,l2),(l1,s0)}\l"];
     expand_block5 [label="call Sharing.<init>(Sharing):void    {(s1,s2),(l0,l2),(l1,s0)}\lputfield next                        {(l0,l2),(l1,s0)}\lload 1                               {(l0,l2)}\lgetfield next                        {(l0,l2),(l1,s0)}\lstore 1                              {(l0,l2),(l1,s0)}\lload 2                               {(l0,l2)}\lgetfield next                        {(l0,s0),(l2,s0),(l0,l2)}\lstore 2                              {(l0,s0),(l2,s0),(l0,l2)}\l"];
     expand_block4 -> expand_block5;
-    expand_block2 -> expand_block3;
     expand_block2 -> expand_block4;
-    expand_block1 -> expand_block2;
+    expand_block2 -> expand_block3;
     expand_block5 -> expand_block2;
+    expand_block1 -> expand_block2;
   }
   subgraph cluster_1 {
     label="main_cycle";
@@ -25,19 +25,19 @@ digraph Program {
     style=rounded;
     node [shape=box fontname="monospace"];
     edge [color=blue];
-    main_cycle_block1 [label="new Sharing    \ldup            \lnew Sharing    \ldup            \lnew Sharing    \ldup            \lconst null     \l"];
-    main_cycle_block2 [label="call Sharing.<init>(Sharing):void    \l"];
-    main_cycle_block3 [label="call Sharing.<init>(Sharing):void    \l"];
-    main_cycle_block4 [label="call Sharing.<init>(Sharing):void    \lstore 1                              \lnew Sharing                          \ldup                                  \lnew Sharing                          \ldup                                  \lconst null                           \l"];
-    main_cycle_block5 [label="call Sharing.<init>(Sharing):void    \l"];
-    main_cycle_block6 [label="call Sharing.<init>(Sharing):void    \lstore 2                              \lload 2                               \lgetfield next                        \lload 2                               \lputfield next                        \l"];
-    main_cycle_block7 [label="load 1                               \lload 2                               \lcall Sharing.expand(Sharing):void    \l"];
+    main_cycle_block1 [label="new Sharing    {}\ldup            {}\lnew Sharing    {(s0,s1)}\ldup            {(s0,s1)}\lnew Sharing    {(s0,s1),(s2,s3)}\ldup            {(s0,s1),(s2,s3)}\lconst null     {(s0,s1),(s2,s3),(s4,s5)}\l"];
+    main_cycle_block2 [label="call Sharing.<init>(Sharing):void    {(s0,s1),(s2,s3),(s4,s5)}\l"];
+    main_cycle_block3 [label="call Sharing.<init>(Sharing):void    {(s0,s1),(s2,s3)}\l"];
+    main_cycle_block4 [label="call Sharing.<init>(Sharing):void    {(s0,s1)}\lstore 1                              {}\lnew Sharing                          {}\ldup                                  {}\lnew Sharing                          {(s0,s1)}\ldup                                  {(s0,s1)}\lconst null                           {(s0,s1),(s2,s3)}\l"];
+    main_cycle_block5 [label="call Sharing.<init>(Sharing):void    {(s0,s1),(s2,s3)}\l"];
+    main_cycle_block6 [label="call Sharing.<init>(Sharing):void    {(s0,s1)}\lstore 2                              {}\lload 2                               {}\lgetfield next                        {(l2,s0)}\lload 2                               {(l2,s0)}\lputfield next                        {(s0,s1),(l2,s1),(l2,s0)}\l"];
+    main_cycle_block7 [label="load 1                               {}\lload 2                               {(l1,s0)}\lcall Sharing.expand(Sharing):void    {(l2,s1),(l1,s0)}\l"];
     main_cycle_block2 -> main_cycle_block3;
     main_cycle_block4 -> main_cycle_block5;
-    main_cycle_block1 -> main_cycle_block2;
     main_cycle_block6 -> main_cycle_block7;
-    main_cycle_block3 -> main_cycle_block4;
     main_cycle_block5 -> main_cycle_block6;
+    main_cycle_block3 -> main_cycle_block4;
+    main_cycle_block1 -> main_cycle_block2;
   }
   subgraph cluster_2 {
     label="main_term";
@@ -45,19 +45,19 @@ digraph Program {
     style=rounded;
     node [shape=box fontname="monospace"];
     edge [color=blue];
-    main_term_block1 [label="new Sharing    {}\ldup            {}\lnew Sharing    {(s0,s1)}\ldup            {(s0,s1)}\lnew Sharing    {(s0,s1),(s2,s3)}\ldup            {(s0,s1),(s2,s3)}\lconst null     {(s0,s1),(s2,s3),(s4,s5)}\l"];
-    main_term_block2 [label="call Sharing.<init>(Sharing):void    {(s0,s1),(s2,s3),(s4,s5)}\l"];
-    main_term_block3 [label="call Sharing.<init>(Sharing):void    {(s0,s1),(s2,s3)}\l"];
-    main_term_block4 [label="call Sharing.<init>(Sharing):void    {(s0,s1)}\lstore 1                              {}\lnew Sharing                          {}\ldup                                  {}\lnew Sharing                          {(s0,s1)}\ldup                                  {(s0,s1)}\lconst null                           {(s0,s1),(s2,s3)}\l"];
-    main_term_block5 [label="call Sharing.<init>(Sharing):void    {(s0,s1),(s2,s3)}\l"];
-    main_term_block6 [label="call Sharing.<init>(Sharing):void    {(s0,s1)}\lstore 2                              {}\lload 1                               {}\lload 2                               {(l1,s0)}\l"];
-    main_term_block7 [label="call Sharing.expand(Sharing):void    {(l2,s1),(l1,s0)}\l"];
-    main_term_block3 -> main_term_block4;
-    main_term_block2 -> main_term_block3;
-    main_term_block5 -> main_term_block6;
-    main_term_block4 -> main_term_block5;
+    main_term_block1 [label="new Sharing    \ldup            \lnew Sharing    \ldup            \lnew Sharing    \ldup            \lconst null     \l"];
+    main_term_block2 [label="call Sharing.<init>(Sharing):void    \l"];
+    main_term_block3 [label="call Sharing.<init>(Sharing):void    \l"];
+    main_term_block4 [label="call Sharing.<init>(Sharing):void    \lstore 1                              \lnew Sharing                          \ldup                                  \lnew Sharing                          \ldup                                  \lconst null                           \l"];
+    main_term_block5 [label="call Sharing.<init>(Sharing):void    \l"];
+    main_term_block6 [label="call Sharing.<init>(Sharing):void    \lstore 2                              \lload 1                               \lload 2                               \l"];
+    main_term_block7 [label="call Sharing.expand(Sharing):void    \l"];
     main_term_block6 -> main_term_block7;
     main_term_block1 -> main_term_block2;
+    main_term_block3 -> main_term_block4;
+    main_term_block4 -> main_term_block5;
+    main_term_block2 -> main_term_block3;
+    main_term_block5 -> main_term_block6;
   }
   subgraph cluster_3 {
     label="<init>";

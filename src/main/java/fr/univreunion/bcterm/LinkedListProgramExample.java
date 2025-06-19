@@ -8,9 +8,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisRunner;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityState;
 import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
 import fr.univreunion.bcterm.jvm.instruction.AddInstruction;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -298,16 +301,6 @@ public class LinkedListProgramExample {
             System.out.println(state.toDetailedString());
         }
 
-        /*
-         * System.out.println("\nAliasing analysis results:"); for (Map.Entry<String,
-         * Map<BytecodeInstruction, AliasingState>> methodEntry : aliasingAnalysisRunner
-         * .getMethodInstructionStates().entrySet()) { System.out.println("\nMethod: " +
-         * methodEntry.getKey()); for (Map.Entry<BytecodeInstruction, AliasingState>
-         * instructionEntry : methodEntry.getValue().entrySet()) {
-         * System.out.println("Instruction: " + instructionEntry.getKey());
-         * System.out.println("State: " + instructionEntry.getValue()); } }
-         */
-
         initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
@@ -325,15 +318,32 @@ public class LinkedListProgramExample {
             System.out.println(state.toDetailedString());
         }
 
-        /*
-         * System.out.println("\nSharing analysis results:"); for (Map.Entry<String,
-         * Map<BytecodeInstruction, SharingState>> methodEntry : sharingAnalysisRunner
-         * .getMethodInstructionStates().entrySet()) { System.out.println("\nMethod: " +
-         * methodEntry.getKey()); for (Map.Entry<BytecodeInstruction, SharingState>
-         * instructionEntry : methodEntry.getValue().entrySet()) {
-         * System.out.println("Instruction: " + instructionEntry.getKey());
-         * System.out.println("State: " + instructionEntry.getValue()); } }
-         */
+        if (Constants.ENABLE_FILE_GENERATION) {
+            program.getMethod("append").saveToFile();
+            program.getMethod("size").saveToFile();
+            program.saveToFile("linkedListAnalysis");
+
+            // Generate images from all DOT files in the program directory
+            MemoryGraphGenerator.generateImagesFromDotFiles(programDir);
+        }
+
+        // Reset initial state for cyclicity analysis
+        initialState = new JVMState();
+        initialState.setLocalVariable(0, Value.NULL);
+
+        System.out.println("\n========================================");
+        System.out.println("EXECUTING PROGRAM WITH CYCLICITY ANALYSIS");
+        System.out.println("========================================\n");
+
+        CyclicityAnalysisRunner cyclicityAnalysisRunner = new CyclicityAnalysisRunner();
+        Set<JVMState> cyclicityAnalysisResults = program.execute(initialState, cyclicityAnalysisRunner);
+
+        System.out.println("\nFinal state after cyclicity analysis:");
+        for (JVMState state : cyclicityAnalysisResults) {
+            System.out.println("Local variables: " + state.getLocalVariablesSize());
+            System.out.println("Stack size: " + state.getStackSize());
+            System.out.println(state.toDetailedString());
+        }
 
         if (Constants.ENABLE_FILE_GENERATION) {
             program.getMethod("append").saveToFile();
