@@ -13,6 +13,8 @@ import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
 import fr.univreunion.bcterm.analysis.aliasing.AliasingState;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisRunner;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityState;
 import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
 import fr.univreunion.bcterm.analysis.sharing.SharingState;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -58,7 +60,7 @@ public class SharingProgramExample {
         program.addMethod("main_cycle", mainCycleCfg);
 
         // Set the main method
-        program.setMainMethodName("main_term");
+        program.setMainMethodName("main_cycle");
 
         return program;
     }
@@ -400,6 +402,33 @@ public class SharingProgramExample {
                 .getMethodInstructionStates().entrySet()) {
             System.out.println("\nMethod: " + methodEntry.getKey());
             for (Map.Entry<BytecodeInstruction, SharingState> instructionEntry : methodEntry.getValue().entrySet()) {
+                System.out.println("Instruction: " + instructionEntry.getKey());
+                System.out.println("State: " + instructionEntry.getValue());
+            }
+        }
+
+        initialState = new JVMState();
+        initialState.setLocalVariable(0, Value.NULL);
+
+        System.out.println("\n========================================");
+        System.out.println("EXECUTING PROGRAM WITH CYCLICITY ANALYSIS");
+        System.out.println("========================================\n");
+
+        CyclicityAnalysisRunner cyclicityAnalysisRunner = new CyclicityAnalysisRunner();
+        Set<JVMState> cyclicityAnalysisResults = program.execute(initialState, cyclicityAnalysisRunner);
+
+        System.out.println("\nFinal state after cyclicity analysis:");
+        for (JVMState state : cyclicityAnalysisResults) {
+            System.out.println("Local variables: " + state.getLocalVariablesSize());
+            System.out.println("Stack size: " + state.getStackSize());
+            System.out.println(state.toDetailedString());
+        }
+
+        System.out.println("\nCyclicity analysis results:");
+        for (Map.Entry<String, Map<BytecodeInstruction, CyclicityState>> methodEntry : cyclicityAnalysisRunner
+                .getMethodInstructionStates().entrySet()) {
+            System.out.println("\nMethod: " + methodEntry.getKey());
+            for (Map.Entry<BytecodeInstruction, CyclicityState> instructionEntry : methodEntry.getValue().entrySet()) {
                 System.out.println("Instruction: " + instructionEntry.getKey());
                 System.out.println("State: " + instructionEntry.getValue());
             }

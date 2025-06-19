@@ -1,13 +1,7 @@
 package fr.univreunion.bcterm.analysis.cyclicity;
 
-/**
- * Represents a variable that points to a cyclic data structure.
- * This class tracks variables containing cycles in their referenced object
- * graphs.
- * 
- * @param variableName the name of the variable associated with the cyclic
- *                     reference
- */
+import java.util.Objects;
+
 public class CyclicVariable {
     private final String variableName;
 
@@ -20,18 +14,18 @@ public class CyclicVariable {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public boolean equals(Object o) {
+        if (this == o)
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        if (o == null || getClass() != o.getClass())
             return false;
-        CyclicVariable other = (CyclicVariable) obj;
-        return variableName.equals(other.variableName);
+        CyclicVariable that = (CyclicVariable) o;
+        return Objects.equals(variableName, that.variableName);
     }
 
     @Override
     public int hashCode() {
-        return variableName.hashCode();
+        return Objects.hash(variableName);
     }
 
     @Override

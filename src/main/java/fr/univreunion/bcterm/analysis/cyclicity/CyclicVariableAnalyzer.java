@@ -5,31 +5,46 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import fr.univreunion.bcterm.jvm.state.JVMObject;
-import fr.univreunion.bcterm.jvm.state.JVMState;
-import fr.univreunion.bcterm.jvm.state.LocationValue;
-import fr.univreunion.bcterm.jvm.state.Value;
+import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
+import fr.univreunion.bcterm.analysis.sharing.SharingState;
+import fr.univreunion.bcterm.jvm.instruction.AddInstruction;
+import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
+import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
+import fr.univreunion.bcterm.jvm.instruction.ConstInstruction;
+import fr.univreunion.bcterm.jvm.instruction.DupInstruction;
+import fr.univreunion.bcterm.jvm.instruction.GetFieldInstruction;
+import fr.univreunion.bcterm.jvm.instruction.IfEqOfTypeInstruction;
+import fr.univreunion.bcterm.jvm.instruction.IfNeOfTypeInstruction;
+import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
+import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
+import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
+import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
 
 /**
- * Analyzes cyclic variables within a JVM state, tracking and detecting cyclic
- * references
- * across local variables, operand stack, and object fields.
- *
- * This utility class provides methods to:
- * - Set and manage the current method call context
- * - Detect cyclic variables in a JVM state
- * - Store and retrieve cyclic variables for different method calls
- *
- * The analysis identifies variables that form circular references within the
- * program's memory state.
+ * Analyzer for tracking and managing cyclicity relationships between variables
+ * during bytecode analysis.
+ * 
+ * This class provides static methods to track cyclicity states across method
+ * calls,
+ * analyze bytecode instructions for potential cyclicity changes, and query
+ * cyclicity
+ * relationships.
+ * 
+ * The analyzer maintains a mapping of method calls to their current cyclicity
+ * states,
+ * allowing for precise tracking of variable cyclicity during bytecode
+ * interpretation.
  */
 public class CyclicVariableAnalyzer {
-    private static final Map<String, Set<CyclicVariable>> methodCallCyclicVars = new HashMap<>();
+    private static final Map<String, CyclicityState> methodStates = new HashMap<>();
     private static String currentMethodCall = null;
+    private static CyclicityState currentState = null;
 
     public static void setCurrentMethodCall(String methodCallId) {
         currentMethodCall = methodCallId;
-        methodCallCyclicVars.putIfAbsent(methodCallId, new HashSet<>());
+        methodStates.putIfAbsent(methodCallId, new CyclicityState());
+        currentState = methodStates.get(methodCallId);
     }
 
     public static String getCurrentMethodCall() {
@@ -37,101 +52,184 @@ public class CyclicVariableAnalyzer {
     }
 
     public static void resetAll() {
-        methodCallCyclicVars.clear();
+        methodStates.clear();
         currentMethodCall = null;
+        currentState = null;
     }
 
-    private static Set<CyclicVariable> getCurrentMethodCallCyclicVars() {
-        if (currentMethodCall == null) {
-            return new HashSet<>();
+    public static CyclicityState getCurrentState() {
+        if (currentState == null) {
+            return new CyclicityState();
         }
-        return methodCallCyclicVars.getOrDefault(currentMethodCall, new HashSet<>());
+        return currentState;
     }
 
-    public static Set<CyclicVariable> getCyclicVariables() {
-        return new HashSet<>(getCurrentMethodCallCyclicVars());
+    public static Set<CyclicVariable> getPossiblyCyclicVariables() {
+        return new HashSet<>(getCurrentState().getPossiblyCyclicVariables());
     }
 
-    public static Set<CyclicVariable> analyze(JVMState state) {
-        if (currentMethodCall == null) {
-            System.out.println("Warning: No current method call set for cyclic variables analysis");
-            return new HashSet<>();
-        }
-
-        Set<CyclicVariable> cyclicVars = detectCyclicVariables(state);
-
-        methodCallCyclicVars.put(currentMethodCall, cyclicVars);
-
-        return cyclicVars;
-    }
-
-    private static Set<CyclicVariable> detectCyclicVariables(JVMState state) {
-        Set<CyclicVariable> result = new HashSet<>();
-
-        // Check local variables
-        for (int i = 0; i < state.getLocalVariablesSize(); i++) {
-            Value value = state.getLocalVariable(i);
-            if (value != null && value instanceof LocationValue) {
-                LocationValue location = (LocationValue) value;
-                if (hasCycle(state, location, new HashSet<>())) {
-                    result.add(new CyclicVariable("l" + i));
-                }
-            }
-        }
-
-        // Check operand stack
-        for (int i = 0; i < state.getStackSize(); i++) {
-            Value value = state.getStackElement(i);
-            if (value != null && value instanceof LocationValue) {
-                LocationValue location = (LocationValue) value;
-                if (hasCycle(state, location, new HashSet<>())) {
-                    result.add(new CyclicVariable("s" + i));
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private static boolean hasCycle(JVMState state, LocationValue location, Set<Long> visited) {
-        long address = location.getAddress();
-
-        if (visited.contains(address)) {
-            return true;
-        }
-
-        visited.add(address);
-
-        JVMObject object = state.getObject(location);
-        if (object == null) {
-            return false;
-        }
-
-        Map<String, Value> fields = object.getFields();
-        for (Value fieldValue : fields.values()) {
-            if (fieldValue != null && fieldValue instanceof LocationValue) {
-                LocationValue fieldLocation = (LocationValue) fieldValue;
-                if (hasCycle(state, fieldLocation, new HashSet<>(visited))) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public static String formatForLabel(Set<CyclicVariable> cyclicVars) {
+    public static String formatForLabel(Set<CyclicVariable> cyclicVariables) {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         boolean first = true;
-        for (CyclicVariable var : cyclicVars) {
+        for (CyclicVariable cyclicVar : cyclicVariables) {
             if (!first) {
                 sb.append(",");
             }
-            sb.append(var.getVariableName());
+            sb.append(cyclicVar.getVariableName());
             first = false;
         }
         sb.append("}");
         return sb.toString();
+    }
+
+    public static CyclicityState execute(BytecodeInstruction instruction, CyclicityState state) {
+        if (instruction instanceof LoadInstruction) {
+            handleLoadInstruction((LoadInstruction) instruction, state);
+        } else if (instruction instanceof StoreInstruction) {
+            handleStoreInstruction((StoreInstruction) instruction, state);
+        } else if (instruction instanceof DupInstruction) {
+            handleDupInstruction((DupInstruction) instruction, state);
+        } else if (instruction instanceof NewInstruction) {
+            handleNewInstruction((NewInstruction) instruction, state);
+        } else if (instruction instanceof PutFieldInstruction) {
+            handlePutFieldInstruction((PutFieldInstruction) instruction, state);
+        } else if (instruction instanceof CallInstruction) {
+            handleCallInstruction((CallInstruction) instruction, state);
+        } else if (instruction instanceof GetFieldInstruction) {
+            handleGetFieldInstruction((GetFieldInstruction) instruction, state);
+        } else if (instruction instanceof ConstInstruction) {
+            handleConstInstruction((ConstInstruction) instruction, state);
+        } else if (instruction instanceof AddInstruction) {
+            handleAddInstruction((AddInstruction) instruction, state);
+        } else if (instruction instanceof IfEqOfTypeInstruction) {
+            handleIfEqOfTypeInstruction((IfEqOfTypeInstruction) instruction, state);
+        } else if (instruction instanceof IfNeOfTypeInstruction) {
+            handleIfNeOfTypeInstruction((IfNeOfTypeInstruction) instruction, state);
+        }
+
+        return state;
+    }
+
+    public static void analyze(BytecodeInstruction instruction) {
+        if (currentMethodCall == null) {
+            System.out.println("Warning: No current method call set for cyclicity analysis");
+            return;
+        }
+
+        CyclicityState state = methodStates.get(currentMethodCall);
+        execute(instruction, state);
+    }
+
+    private static void handleLoadInstruction(LoadInstruction instruction, CyclicityState state) {
+        int localIndex = instruction.getIndex();
+        String localVar = "l" + localIndex;
+        String stackVar = "s" + state.getStackSize();
+
+        state.pushToStack(stackVar);
+
+        if (state.isPossiblyCyclic(localVar)) {
+            state.addPossiblyCyclic(stackVar);
+        }
+    }
+
+    private static void handleStoreInstruction(StoreInstruction instruction, CyclicityState state) {
+        int localIndex = instruction.getIndex();
+        String localVar = "l" + localIndex;
+        String stackVar = state.popFromStack();
+
+        if (state.isPossiblyCyclic(stackVar)) {
+            state.addPossiblyCyclic(localVar);
+        }
+        state.removePossiblyCyclic(stackVar);
+    }
+
+    private static void handleDupInstruction(DupInstruction instruction, CyclicityState state) {
+        String topVar = state.peekStack();
+        String newStackVar = "s" + state.getStackSize();
+
+        state.pushToStack(newStackVar);
+
+        if (state.isPossiblyCyclic(topVar)) {
+            state.addPossiblyCyclic(newStackVar);
+        }
+    }
+
+    private static void handleNewInstruction(NewInstruction instruction, CyclicityState state) {
+        String newObjectVar = "s" + state.getStackSize();
+        state.pushToStack(newObjectVar);
+    }
+
+    private static void handlePutFieldInstruction(PutFieldInstruction instruction, CyclicityState state) {
+        String valueVar = state.popFromStack();
+        String objectVar = state.popFromStack();
+
+        SharingPairAnalyzer.setCurrentMethodCall(currentMethodCall);
+        Map<BytecodeInstruction, SharingState> methodInstructionStates1 = SharingAnalysisRunner
+                .getMethodInstructionStates(currentMethodCall);
+        SharingState sharingState = methodInstructionStates1.get(instruction);
+
+        boolean valueIsCyclic = state.isPossiblyCyclic(valueVar);
+        boolean objectAndValueShare = sharingState.mayShare(objectVar, valueVar);
+
+        if (valueIsCyclic || objectAndValueShare) {
+            Set<String> variablesSharingWithObject = sharingState.getSharingVarsWith(objectVar);
+            for (String var : variablesSharingWithObject) {
+                state.addPossiblyCyclic(var);
+            }
+        }
+        state.removePossiblyCyclic(valueVar);
+        state.removePossiblyCyclic(objectVar);
+    }
+
+    private static void handleCallInstruction(CallInstruction instruction, CyclicityState state) {
+        int paramCount = instruction.getParameterCount();
+        for (int i = 0; i < paramCount + 1; i++) {
+            String paramVar = state.popFromStack();
+            state.removePossiblyCyclic(paramVar);
+        }
+
+        if (!instruction.getReturnType().equals("void")) {
+            String resultVar = "s" + state.getStackSize();
+            state.pushToStack(resultVar);
+            state.addPossiblyCyclic(resultVar);
+        }
+    }
+
+    private static void handleGetFieldInstruction(GetFieldInstruction instruction, CyclicityState state) {
+        String objectVar = state.popFromStack();
+        String resultVar = "s" + state.getStackSize();
+
+        state.pushToStack(resultVar);
+
+        if (state.isPossiblyCyclic(objectVar)) {
+            state.removePossiblyCyclic(objectVar);
+            state.addPossiblyCyclic(resultVar);
+        }
+    }
+
+    private static void handleConstInstruction(ConstInstruction instruction, CyclicityState state) {
+        String constVar = "s" + state.getStackSize();
+        state.pushToStack(constVar);
+    }
+
+    private static void handleAddInstruction(AddInstruction instruction, CyclicityState state) {
+        String op2 = state.popFromStack();
+        String op1 = state.popFromStack();
+        String resultVar = "s" + state.getStackSize();
+        state.removePossiblyCyclic(op1);
+        state.removePossiblyCyclic(op2);
+
+        state.pushToStack(resultVar);
+    }
+
+    private static void handleIfEqOfTypeInstruction(IfEqOfTypeInstruction instruction, CyclicityState state) {
+        String topVar = state.popFromStack();
+        state.removePossiblyCyclic(topVar);
+    }
+
+    private static void handleIfNeOfTypeInstruction(IfNeOfTypeInstruction instruction, CyclicityState state) {
+        String topVar = state.popFromStack();
+        state.removePossiblyCyclic(topVar);
     }
 }

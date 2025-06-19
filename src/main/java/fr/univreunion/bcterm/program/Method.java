@@ -142,7 +142,7 @@ public class Method {
 
         System.out.println("Executing block " + currentBlock.getId() + " in method " + name);
 
-        JVMState stateAfterBlock = executeBlock(currentBlock, new JVMState(currentState), analysisRunner);
+        JVMState stateAfterBlock = executeBlock(currentBlock, currentState, analysisRunner);
 
         if (stateAfterBlock == null) {
             System.out.println("Execution of block " + currentBlock.getId() + " failed in method " + name);
@@ -193,6 +193,9 @@ public class Method {
 
             boolean executionSucceeded = instruction.execute(state);
 
+            if (methodCallId.contains("expand")) {
+                System.out.print("");
+            }
             if (instruction instanceof CallInstruction) {
                 this.methodCallId = ((CallInstruction) instruction).popMethodCallStack();
                 analysisRunner.setCurrentMethodCall(methodCallId);

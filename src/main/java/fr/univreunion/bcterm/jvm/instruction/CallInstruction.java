@@ -11,6 +11,8 @@ import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
 import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisRunner;
 import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
 import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
@@ -204,6 +206,9 @@ public class CallInstruction extends BytecodeInstruction {
                     } else if (result instanceof SharingPair && analysisRunner instanceof SharingAnalysisRunner) {
                         SharingPair pair = (SharingPair) result;
                         SharingPairAnalyzer.getCurrentState().addSharingPair(pair.getVar1(), pair.getVar2());
+                    } else if (result instanceof String && analysisRunner instanceof CyclicityAnalysisRunner) {
+                        String nonCyclicVar = (String) result;
+                        CyclicVariableAnalyzer.getCurrentState().addPossiblyCyclic(nonCyclicVar);
                     }
                 }
             }
@@ -335,6 +340,17 @@ public class CallInstruction extends BytecodeInstruction {
 
         // Check relationships between all pairs of stack parameters
         for (int i = 0; i <= paramCount; i++) {
+
+            if (analysisRunner instanceof CyclicityAnalysisRunner) {
+                int stackPos1 = initialStackSize - i;
+                String stackVar1 = "s" + stackPos1;
+                String localVar1 = "l" + i;
+                // For non-cyclicity, we propagate cyclic properties
+                if (CyclicVariableAnalyzer.getCurrentState().isPossiblyCyclic(stackVar1)) {
+                    propagatedResults.add(localVar1);
+                }
+                continue;
+            }
             for (int j = i + 1; j <= paramCount; j++) {
                 int stackPos1 = initialStackSize - i;
                 int stackPos2 = initialStackSize - j;
@@ -362,11 +378,11 @@ public class CallInstruction extends BytecodeInstruction {
      */
     private Object createRelationshipIfExists(String stackVar1, String stackVar2, String localVar1, String localVar2) {
         if (analysisRunner instanceof AliasingAnalysisRunner) {
-            if (AliasPairAnalyzer.areAliases(stackVar1, stackVar2)) {
+            if (AliasPairAnalyzer.getCurrentState().areAliases(stackVar1, stackVar2)) {
                 return new AliasPair(localVar1, localVar2);
             }
         } else if (analysisRunner instanceof SharingAnalysisRunner) {
-            if (SharingPairAnalyzer.mayShare(stackVar1, stackVar2)) {
+            if (SharingPairAnalyzer.getCurrentState().mayShare(stackVar1, stackVar2)) {
                 return new SharingPair(localVar1, localVar2);
             }
         }
