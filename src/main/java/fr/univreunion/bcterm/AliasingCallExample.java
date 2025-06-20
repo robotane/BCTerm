@@ -27,9 +27,11 @@ import fr.univreunion.bcterm.program.BasicBlock;
 import fr.univreunion.bcterm.program.CFG;
 import fr.univreunion.bcterm.program.Program;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 import fr.univreunion.bcterm.util.MemoryGraphGenerator;
 
 public class AliasingCallExample {
+    private static final java.util.logging.Logger logger = Logger.getLogger(AliasingCallExample.class);
 
     public static Program createAliasingCallProgram() {
         Program program = new Program("AliasingCall");
@@ -100,7 +102,7 @@ public class AliasingCallExample {
 
     public static void main(String[] args) {
         Program program = createAliasingCallProgram();
-        System.out.println(program);
+        logger.info(() -> program.toString());
 
         String programName = program.getName();
         String programDir = Constants.GENERATED_DIR + File.separator + programName;
@@ -116,43 +118,43 @@ public class AliasingCallExample {
                 }
                 Files.createDirectories(programPath);
             } catch (IOException e) {
-                System.err.println("Error cleaning program directory: " + e.getMessage());
+                logger.severe(() -> "Error cleaning program directory: " + e.getMessage());
             }
         }
 
         JVMState initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        System.out.println("\n========================================");
-        System.out.println("EXECUTING PROGRAM WITH ALIASING ANALYSIS");
-        System.out.println("========================================\n");
+        logger.info(() -> "\n========================================");
+        logger.info(() -> "EXECUTING PROGRAM WITH ALIASING ANALYSIS");
+        logger.info(() -> "========================================\n");
 
         AliasingAnalysisRunner aliasingAnalysisRunner = new AliasingAnalysisRunner();
         Set<JVMState> aliasingAnalysisResults = program.execute(initialState, aliasingAnalysisRunner);
 
-        System.out.println("\nFinal state after aliasing analysis:");
+        logger.info(() -> "\nFinal state after aliasing analysis:");
         for (JVMState state : aliasingAnalysisResults) {
-            System.out.println("Local variables: " + state.getLocalVariablesSize());
-            System.out.println("Stack size: " + state.getStackSize());
-            System.out.println(state.toDetailedString());
+            logger.info(() -> "Local variables: " + state.getLocalVariablesSize());
+            logger.info(() -> "Stack size: " + state.getStackSize());
+            logger.info(() -> state.toDetailedString());
         }
 
         // Reset initial state for sharing analysis
         initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        System.out.println("\n========================================");
-        System.out.println("EXECUTING PROGRAM WITH SHARING ANALYSIS");
-        System.out.println("========================================\n");
+        logger.info(() -> "\n========================================");
+        logger.info(() -> "EXECUTING PROGRAM WITH SHARING ANALYSIS");
+        logger.info(() -> "========================================\n");
 
         SharingAnalysisRunner sharingAnalysisRunner = new SharingAnalysisRunner();
         Set<JVMState> sharingAnalysisResults = program.execute(initialState, sharingAnalysisRunner);
 
-        System.out.println("\nFinal state after sharing analysis:");
+        logger.info(() -> "\nFinal state after sharing analysis:");
         for (JVMState state : sharingAnalysisResults) {
-            System.out.println("Local variables: " + state.getLocalVariablesSize());
-            System.out.println("Stack size: " + state.getStackSize());
-            System.out.println(state.toDetailedString());
+            logger.info(() -> "Local variables: " + state.getLocalVariablesSize());
+            logger.info(() -> "Stack size: " + state.getStackSize());
+            logger.info(() -> state.toDetailedString());
         }
 
         if (Constants.ENABLE_FILE_GENERATION) {
@@ -167,27 +169,27 @@ public class AliasingCallExample {
         initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        System.out.println("\n========================================");
-        System.out.println("EXECUTING PROGRAM WITH CYCLICITY ANALYSIS");
-        System.out.println("========================================\n");
+        logger.info(() -> "\n========================================");
+        logger.info(() -> "EXECUTING PROGRAM WITH CYCLICITY ANALYSIS");
+        logger.info(() -> "========================================\n");
 
         CyclicityAnalysisRunner cyclicityAnalysisRunner = new CyclicityAnalysisRunner();
         Set<JVMState> cyclicityAnalysisResults = program.execute(initialState, cyclicityAnalysisRunner);
 
-        System.out.println("\nFinal state after cyclicity analysis:");
+        logger.info(() -> "\nFinal state after cyclicity analysis:");
         for (JVMState state : cyclicityAnalysisResults) {
-            System.out.println("Local variables: " + state.getLocalVariablesSize());
-            System.out.println("Stack size: " + state.getStackSize());
-            System.out.println(state.toDetailedString());
+            logger.info(() -> "Local variables: " + state.getLocalVariablesSize());
+            logger.info(() -> "Stack size: " + state.getStackSize());
+            logger.info(() -> state.toDetailedString());
         }
 
-        System.out.println("\nCyclicity analysis results:");
+        logger.info(() -> "\nCyclicity analysis results:");
         for (Map.Entry<String, Map<BytecodeInstruction, CyclicityState>> methodEntry : cyclicityAnalysisRunner
                 .getMethodInstructionStates().entrySet()) {
-            System.out.println("\nMethod: " + methodEntry.getKey());
+            logger.info(() -> "\nMethod: " + methodEntry.getKey());
             for (Map.Entry<BytecodeInstruction, CyclicityState> instructionEntry : methodEntry.getValue().entrySet()) {
-                System.out.println("Instruction: " + instructionEntry.getKey());
-                System.out.println("State: " + instructionEntry.getValue());
+                logger.info(() -> "Instruction: " + instructionEntry.getKey());
+                logger.info(() -> "State: " + instructionEntry.getValue());
             }
         }
 

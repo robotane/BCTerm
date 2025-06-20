@@ -20,6 +20,7 @@ import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.Value;
 import fr.univreunion.bcterm.program.Method;
 import fr.univreunion.bcterm.program.Program;
+import fr.univreunion.bcterm.util.Logger;
 
 /**
  * call κ1.m(t1, ..., tp) : t, ..., κn.m(t1, ..., tp) : t.
@@ -42,6 +43,7 @@ import fr.univreunion.bcterm.program.Program;
  * variables bound to a0, a1, ..., ap.
  */
 public class CallInstruction extends BytecodeInstruction {
+    private static final java.util.logging.Logger logger = Logger.getLogger(CallInstruction.class);
     private String methodName;
     private String signature;
     private List<String> implementationClasses; // Remplace className
@@ -71,7 +73,7 @@ public class CallInstruction extends BytecodeInstruction {
             int parenOpenIndex = impl.indexOf('(');
 
             if (dotIndex == -1 || parenOpenIndex == -1) {
-                System.out.println("Warning: Invalid implementation format: " + impl);
+                logger.warning(() -> "Warning: Invalid implementation format: " + impl);
                 continue;
             }
 
@@ -143,7 +145,7 @@ public class CallInstruction extends BytecodeInstruction {
     @Override
     public boolean execute(JVMState initialState) {
         if (program == null) {
-            System.out.println("Error: Program not defined for CallInstruction");
+            logger.severe("Error: Program not defined for CallInstruction");
             return false;
         }
 
@@ -153,7 +155,7 @@ public class CallInstruction extends BytecodeInstruction {
         int paramCount = parameters.size();
 
         if (initialState.getStackSize() < paramCount + 1) {
-            System.out.println("Error: Not enough parameters on stack");
+            logger.severe("Error: Not enough parameters on stack");
             return false;
         }
         int initialStackSize = initialState.getStackSize();
@@ -164,7 +166,7 @@ public class CallInstruction extends BytecodeInstruction {
         }
 
         if (paramValues[0] == Value.NULL) {
-            System.out.println("Error: Null receiver for method call");
+            logger.severe("Error: Null receiver for method call");
             return false;
         }
 
@@ -180,7 +182,7 @@ public class CallInstruction extends BytecodeInstruction {
         }
 
         if (!methodFound) {
-            System.out.println("Error: Method not found in program: " + this.methodName + this.signature);
+            logger.severe(() -> "Error: Method not found in program: " + this.methodName + this.signature);
             return false;
         }
 
@@ -196,8 +198,6 @@ public class CallInstruction extends BytecodeInstruction {
         if (analysisRunner != null) {
             methodCallId = analysisRunner.generateMethodCallId(this.methodName);
             analysisRunner.setCurrentMethodCall(methodCallId);
-            System.out.println("Method call ID: " + methodCallId);
-            System.out.println("Propagated results: " + propagatedResults);
             if (!propagatedResults.isEmpty()) {
                 for (Object result : propagatedResults) {
                     if (result instanceof AliasPair && analysisRunner instanceof AliasingAnalysisRunner) {
@@ -252,7 +252,7 @@ public class CallInstruction extends BytecodeInstruction {
         int colonIndex = signature.indexOf(':');
 
         if (openParenIndex == -1 || closeParenIndex == -1 || colonIndex == -1) {
-            System.out.println("Error: Invalid signature format: " + signature);
+            logger.warning(() -> "Error: Invalid signature format: " + signature);
             result.put("parameters", parameters);
             result.put("returnType", "void");
             return result;

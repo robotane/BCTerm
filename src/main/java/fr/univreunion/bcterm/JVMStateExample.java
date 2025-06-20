@@ -4,6 +4,7 @@ import fr.univreunion.bcterm.jvm.state.JVMObject;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.LocationValue;
 import fr.univreunion.bcterm.jvm.state.Value;
+import fr.univreunion.bcterm.util.Logger;
 
 /**
  * Example demonstrating how to create and display a specific JVM state
@@ -11,6 +12,7 @@ import fr.univreunion.bcterm.jvm.state.Value;
  * F. Spoto and F. Mesnard and É. Payet, 2010
  */
 public class JVMStateExample {
+    private static final java.util.logging.Logger logger = Logger.getLogger(JVMStateExample.class);
 
     public static void main(String[] args) {
         // Create a JVM state
@@ -56,9 +58,9 @@ public class JVMStateExample {
         state.allocateObject(l5, o5);
 
         // Display the state
-        System.out.println("JVM State Example:");
-        System.out.println(state);
-        System.out.println("\nDetailed JVM State:");
-        System.out.println(state.toDetailedString());
+        logger.info(() -> "JVM State Example:");
+        logger.info(() -> state.toString());
+        logger.info(() -> "\nDetailed JVM State:");
+        logger.info(() -> state.toDetailedString());
     }
 }

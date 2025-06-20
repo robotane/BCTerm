@@ -17,6 +17,7 @@ import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
 import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
 import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
 import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
+import fr.univreunion.bcterm.util.Logger;
 
 /**
  * Analyzer for tracking and managing sharing relationships between variables
@@ -45,7 +46,7 @@ import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
  * abstract semantics for static analysis.
  */
 public class SharingPairAnalyzer {
-
+    private static final java.util.logging.Logger logger = Logger.getLogger(SharingPairAnalyzer.class);
     private static final Map<String, SharingState> methodStates = new HashMap<>();
     private static String currentMethodCall = null;
     private static SharingState currentState = null;
@@ -122,7 +123,7 @@ public class SharingPairAnalyzer {
 
     public static void execute(BytecodeInstruction instruction) {
         if (currentMethodCall == null) {
-            System.out.println("Warning: No current method set for sharing analysis");
+            logger.warning(() -> "Warning: No current method set for sharing analysis");
             return;
         }
 

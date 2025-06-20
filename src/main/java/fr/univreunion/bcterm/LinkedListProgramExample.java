@@ -8,12 +8,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
 import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisRunner;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicityState;
 import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
 import fr.univreunion.bcterm.jvm.instruction.AddInstruction;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
@@ -34,9 +32,11 @@ import fr.univreunion.bcterm.program.BasicBlock;
 import fr.univreunion.bcterm.program.CFG;
 import fr.univreunion.bcterm.program.Program;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 import fr.univreunion.bcterm.util.MemoryGraphGenerator;
 
 public class LinkedListProgramExample {
+    private static final java.util.logging.Logger logger = Logger.getLogger(LinkedListProgramExample.class);
 
     public static Program createLinkedListProgram() {
         Program program = new Program("LinkedList");
@@ -267,7 +267,7 @@ public class LinkedListProgramExample {
 
     public static void main(String[] args) {
         Program program = createLinkedListProgram();
-        System.out.println(program);
+        logger.info(() -> program.toString());
 
         String programName = program.getName();
         String programDir = Constants.GENERATED_DIR + File.separator + programName;
@@ -280,42 +280,42 @@ public class LinkedListProgramExample {
                 }
                 Files.createDirectories(programPath);
             } catch (IOException e) {
-                System.err.println("Error cleaning program directory: " + e.getMessage());
+                logger.severe(() -> "Error cleaning program directory: " + e.getMessage());
             }
         }
 
         JVMState initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        System.out.println("\n========================================");
-        System.out.println("EXECUTING PROGRAM WITH ALIASING ANALYSIS");
-        System.out.println("========================================\n");
+        logger.info(() -> "\n========================================");
+        logger.info(() -> "EXECUTING PROGRAM WITH ALIASING ANALYSIS");
+        logger.info(() -> "========================================\n");
 
         AliasingAnalysisRunner aliasingAnalysisRunner = new AliasingAnalysisRunner();
         Set<JVMState> aliasingAnalysisResults = program.execute(initialState, aliasingAnalysisRunner);
 
-        System.out.println("\nFinal state after aliasing analysis:");
+        logger.info(() -> "\nFinal state after aliasing analysis:");
         for (JVMState state : aliasingAnalysisResults) {
-            System.out.println("Local variables: " + state.getLocalVariablesSize());
-            System.out.println("Stack size: " + state.getStackSize());
-            System.out.println(state.toDetailedString());
+            logger.info(() -> "Local variables: " + state.getLocalVariablesSize());
+            logger.info(() -> "Stack size: " + state.getStackSize());
+            logger.info(() -> state.toDetailedString());
         }
 
         initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        System.out.println("\n========================================");
-        System.out.println("EXECUTING PROGRAM WITH SHARING ANALYSIS");
-        System.out.println("========================================\n");
+        logger.info(() -> "\n========================================");
+        logger.info(() -> "EXECUTING PROGRAM WITH SHARING ANALYSIS");
+        logger.info(() -> "========================================\n");
 
         SharingAnalysisRunner sharingAnalysisRunner = new SharingAnalysisRunner();
         Set<JVMState> sharingAnalysisResults = program.execute(initialState, sharingAnalysisRunner);
 
-        System.out.println("\nFinal state after sharing analysis:");
+        logger.info(() -> "\nFinal state after sharing analysis:");
         for (JVMState state : sharingAnalysisResults) {
-            System.out.println("Local variables: " + state.getLocalVariablesSize());
-            System.out.println("Stack size: " + state.getStackSize());
-            System.out.println(state.toDetailedString());
+            logger.info(() -> "Local variables: " + state.getLocalVariablesSize());
+            logger.info(() -> "Stack size: " + state.getStackSize());
+            logger.info(() -> state.toDetailedString());
         }
 
         if (Constants.ENABLE_FILE_GENERATION) {
@@ -323,26 +323,24 @@ public class LinkedListProgramExample {
             program.getMethod("size").saveToFile();
             program.saveToFile("linkedListAnalysis");
 
-            // Generate images from all DOT files in the program directory
             MemoryGraphGenerator.generateImagesFromDotFiles(programDir);
         }
 
-        // Reset initial state for cyclicity analysis
         initialState = new JVMState();
         initialState.setLocalVariable(0, Value.NULL);
 
-        System.out.println("\n========================================");
-        System.out.println("EXECUTING PROGRAM WITH CYCLICITY ANALYSIS");
-        System.out.println("========================================\n");
+        logger.info(() -> "\n========================================");
+        logger.info(() -> "EXECUTING PROGRAM WITH CYCLICITY ANALYSIS");
+        logger.info(() -> "========================================\n");
 
         CyclicityAnalysisRunner cyclicityAnalysisRunner = new CyclicityAnalysisRunner();
         Set<JVMState> cyclicityAnalysisResults = program.execute(initialState, cyclicityAnalysisRunner);
 
-        System.out.println("\nFinal state after cyclicity analysis:");
+        logger.info(() -> "\nFinal state after cyclicity analysis:");
         for (JVMState state : cyclicityAnalysisResults) {
-            System.out.println("Local variables: " + state.getLocalVariablesSize());
-            System.out.println("Stack size: " + state.getStackSize());
-            System.out.println(state.toDetailedString());
+            logger.info(() -> "Local variables: " + state.getLocalVariablesSize());
+            logger.info(() -> "Stack size: " + state.getStackSize());
+            logger.info(() -> state.toDetailedString());
         }
 
         if (Constants.ENABLE_FILE_GENERATION) {
@@ -350,7 +348,6 @@ public class LinkedListProgramExample {
             program.getMethod("size").saveToFile();
             program.saveToFile("linkedListAnalysis");
 
-            // Generate images from all DOT files in the program directory
             MemoryGraphGenerator.generateImagesFromDotFiles(programDir);
         }
     }

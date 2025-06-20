@@ -10,6 +10,7 @@ import java.util.Set;
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 
 /**
  * Represents a program containing a collection of methods with a designated
@@ -20,6 +21,7 @@ import fr.univreunion.bcterm.util.Constants;
  * of methods, including identifying a primary (main) method.
  */
 public class Program {
+    private static final java.util.logging.Logger logger = Logger.getLogger(Program.class);
     private final String name;
     private final Map<String, Method> methods;
     private String mainMethodName;
@@ -239,9 +241,9 @@ public class Program {
             File outputFile = new File(generatedDir, filename + "." + extension);
             try (FileWriter writer = new FileWriter(dotFile)) {
                 writer.write(dot);
-                System.out.println("Generated " + dotFile + " successfully.");
+                logger.info(() -> "Generated " + dotFile + " successfully.");
             } catch (IOException e) {
-                System.err.println("Error generating dot file: " + e.getMessage());
+                logger.severe(() -> "Error generating dot file: " + e.getMessage());
             }
 
             ProcessBuilder pb = new ProcessBuilder(
@@ -253,10 +255,10 @@ public class Program {
             Process process = pb.start();
             process.waitFor();
 
-            System.out.println("Generated " + outputFile + " successfully.");
+            logger.info(() -> "Generated " + outputFile + " successfully.");
 
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error generating image. Make sure GraphViz is installed.\n" + e.getMessage());
+            logger.severe(() -> "Error generating image. Make sure GraphViz is installed.\n" + e.getMessage());
         }
     }
 

@@ -6,8 +6,10 @@ import java.util.Map;
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 
 public class SharingAnalysisRunner implements AbstractAnalysisRunner {
+    private static final java.util.logging.Logger logger = Logger.getLogger(SharingAnalysisRunner.class);
     private static final Map<String, Map<BytecodeInstruction, SharingState>> methodInstructionStates = new HashMap<>();
     private static Map<BytecodeInstruction, SharingState> currentInstructionState = new HashMap<>();
     private static final Map<String, Integer> methodCallCounters = new HashMap<>();
@@ -18,13 +20,13 @@ public class SharingAnalysisRunner implements AbstractAnalysisRunner {
         SharingPairAnalyzer.execute(instruction);
 
         if (currentInstructionState.containsKey(instruction)) {
-            System.out.println("Warning: Instruction already analyzed");
+            logger.warning("Warning: Instruction already analyzed");
             SharingState oldState = currentInstructionState.get(instruction);
-            System.out.println("Before: " + oldState);
-            System.out.println("After: " + newState);
+            logger.info(() -> "Before: " + oldState);
+            logger.info(() -> "After: " + newState);
 
             SharingState lub = computeLUB(oldState, newState);
-            System.out.println("LUB: " + lub);
+            logger.info(() -> "LUB: " + lub);
 
             if (lub.getSharingPairs().equals(oldState.getSharingPairs())) {
                 return false;
@@ -80,7 +82,6 @@ public class SharingAnalysisRunner implements AbstractAnalysisRunner {
     }
 
     public static Map<BytecodeInstruction, SharingState> getMethodInstructionStates(String methodCallId) {
-        System.out.println(methodInstructionStates);
         return methodInstructionStates.get(methodCallId);
     }
 }

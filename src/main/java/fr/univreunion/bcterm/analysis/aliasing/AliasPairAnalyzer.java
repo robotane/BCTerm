@@ -17,6 +17,7 @@ import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
 import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
 import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
 import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
+import fr.univreunion.bcterm.util.Logger;
 
 /**
  * Analyzer for tracking and managing alias relationships between variables
@@ -33,7 +34,7 @@ import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
  * interpretation.
  */
 public class AliasPairAnalyzer {
-
+    private static final java.util.logging.Logger logger = Logger.getLogger(AliasPairAnalyzer.class);
     private static final Map<String, AliasingState> methodStates = new HashMap<>();
     private static String currentMethodCall = null;
     private static AliasingState currentState = null;
@@ -110,7 +111,7 @@ public class AliasPairAnalyzer {
 
     public static void execute(BytecodeInstruction instruction) {
         if (currentMethodCall == null) {
-            System.out.println("Warning: No current method set for alias analysis");
+            logger.warning(() -> "Warning: No current method set for alias analysis");
             return;
         }
 

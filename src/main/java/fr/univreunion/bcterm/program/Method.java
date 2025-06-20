@@ -14,6 +14,7 @@ import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 import fr.univreunion.bcterm.util.MemoryGraphGenerator;
 
 /**
@@ -25,6 +26,8 @@ import fr.univreunion.bcterm.util.MemoryGraphGenerator;
  * representation of the method's structure.
  */
 public class Method {
+    private static final java.util.logging.Logger logger = Logger.getLogger(Method.class);
+
     private final String name;
     private final String signature;
     private final CFG cfg;
@@ -119,8 +122,8 @@ public class Method {
             }
         }
 
-        System.out.println("\nExecuting method " + name + " with " + analysisRunner.getName());
-        System.out.println("---------------------------------");
+        logger.info(() -> "\nExecuting method " + name + " with " + analysisRunner.getName());
+        logger.info("---------------------------------");
 
         BasicBlock startBlock = cfg.getBlocks().get(0);
         Set<JVMState> finalStates = new HashSet<>();
@@ -128,9 +131,9 @@ public class Method {
 
         executeRecursive(startBlock, initialState, finalStates, visitedInPath, analysisRunner);
 
-        System.out.println("\nMethod " + name + " execution completed");
-        System.out.println("Found " + finalStates.size() + " final states");
-        System.out.println("---------------------------------");
+        logger.info(() -> "\nMethod " + name + " execution completed");
+        logger.info(() -> "Found " + finalStates.size() + " final states");
+        logger.info("---------------------------------");
 
         return finalStates;
     }
@@ -140,12 +143,12 @@ public class Method {
 
         visitedInPath.add(currentBlock);
 
-        System.out.println("Executing block " + currentBlock.getId() + " in method " + name);
+        logger.fine(() -> "Executing block " + currentBlock.getId() + " in method " + name);
 
         JVMState stateAfterBlock = executeBlock(currentBlock, currentState, analysisRunner);
 
         if (stateAfterBlock == null) {
-            System.out.println("Execution of block " + currentBlock.getId() + " failed in method " + name);
+            logger.warning(() -> "Execution of block " + currentBlock.getId() + " failed in method " + name);
             visitedInPath.remove(currentBlock);
             return;
         }
@@ -153,7 +156,7 @@ public class Method {
         Set<BasicBlock> nextBlocks = getBlockSuccessors(currentBlock);
 
         if (nextBlocks.isEmpty()) {
-            System.out.println("End of path at block " + currentBlock.getId() + " in method " + name);
+            logger.fine(() -> "End of path at block " + currentBlock.getId() + " in method " + name);
             finalStates.add(stateAfterBlock.deepCopy());
         } else {
             for (BasicBlock nextBlock : nextBlocks) {
@@ -193,9 +196,6 @@ public class Method {
 
             boolean executionSucceeded = instruction.execute(state);
 
-            if (methodCallId.contains("expand")) {
-                System.out.print("");
-            }
             if (instruction instanceof CallInstruction) {
                 this.methodCallId = ((CallInstruction) instruction).popMethodCallStack();
                 analysisRunner.setCurrentMethodCall(methodCallId);
@@ -205,13 +205,13 @@ public class Method {
             if (executionSucceeded) {
                 analysisSucceeded = analysisRunner.analyze(instruction);
                 if (!analysisSucceeded) {
-                    System.out.println("  Analysis failed");
+                    logger.warning("  Analysis failed");
                 } else {
-                    System.out.println("  " + instruction + " " + instructionLabel);
+                    logger.info(() -> "  " + instruction + " " + instructionLabel);
                 }
             } else {
-                System.out.println("  Instruction execution failed");
-                System.out.println("  " + instruction + " " + instructionLabel);
+                logger.warning("  Instruction execution failed");
+                logger.warning(() -> "  " + instruction + " " + instructionLabel);
             }
 
             if (!executionSucceeded || analysisSucceeded) {
@@ -338,9 +338,9 @@ public class Method {
 
             try (FileWriter writer = new FileWriter(dotFile)) {
                 writer.write(dot);
-                System.out.println("Generated " + dotFile + " successfully.");
+                logger.info(() -> "Generated " + dotFile + " successfully.");
             } catch (IOException e) {
-                System.err.println("Error generating dot file: " + e.getMessage());
+                logger.severe(() -> "Error generating dot file: " + e.getMessage());
             }
 
             ProcessBuilder pb = new ProcessBuilder(
@@ -352,10 +352,10 @@ public class Method {
             Process process = pb.start();
             process.waitFor();
 
-            System.out.println("Generated " + outputFile + " successfully.");
+            logger.info(() -> "Generated " + outputFile + " successfully.");
 
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error generating image. Make sure GraphViz is installed.\n" + e.getMessage());
+            logger.severe(() -> "Error generating image. Make sure GraphViz is installed.\n" + e.getMessage());
         }
     }
 

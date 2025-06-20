@@ -6,25 +6,27 @@ import java.util.Map;
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 
 public class CyclicityAnalysisRunner implements AbstractAnalysisRunner {
+    private static final java.util.logging.Logger logger = Logger.getLogger(CyclicityAnalysisRunner.class);
     private static final Map<String, Map<BytecodeInstruction, CyclicityState>> methodInstructionStates = new HashMap<>();
     private static Map<BytecodeInstruction, CyclicityState> currentInstructionState = new HashMap<>();
     private static final Map<String, Integer> methodCallCounters = new HashMap<>();
 
     @Override
     public boolean analyze(BytecodeInstruction instruction) {
-        CyclicVariableAnalyzer.analyze(instruction);
         CyclicityState newState = CyclicVariableAnalyzer.getCurrentState().deepCopy();
+        CyclicVariableAnalyzer.analyze(instruction);
 
         if (currentInstructionState.containsKey(instruction)) {
-            System.out.println("Warning: Instruction already analyzed for cyclicity");
+            logger.warning("Warning: Instruction already analyzed for cyclicity");
             CyclicityState oldState = currentInstructionState.get(instruction);
-            System.out.println("Before: " + oldState);
-            System.out.println("After: " + newState);
+            logger.info(() -> "Before: " + oldState);
+            logger.info(() -> "After: " + newState);
 
             CyclicityState lub = computeLUB(oldState, newState);
-            System.out.println("LUB: " + lub);
+            logger.info(() -> "LUB: " + lub);
 
             if (lub.getPossiblyCyclicVariables().equals(oldState.getPossiblyCyclicVariables())) {
                 return false;

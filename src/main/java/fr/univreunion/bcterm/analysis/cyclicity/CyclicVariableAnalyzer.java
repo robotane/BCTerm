@@ -20,6 +20,7 @@ import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
 import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
 import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
 import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
+import fr.univreunion.bcterm.util.Logger;
 
 /**
  * Analyzer for tracking and managing cyclicity relationships between variables
@@ -37,6 +38,8 @@ import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
  * interpretation.
  */
 public class CyclicVariableAnalyzer {
+    private static final java.util.logging.Logger logger = Logger.getLogger(CyclicVariableAnalyzer.class);
+
     private static final Map<String, CyclicityState> methodStates = new HashMap<>();
     private static String currentMethodCall = null;
     private static CyclicityState currentState = null;
@@ -113,7 +116,7 @@ public class CyclicVariableAnalyzer {
 
     public static void analyze(BytecodeInstruction instruction) {
         if (currentMethodCall == null) {
-            System.out.println("Warning: No current method call set for cyclicity analysis");
+            logger.warning(() -> "Warning: No current method call set for cyclicity analysis");
             return;
         }
 
@@ -165,9 +168,8 @@ public class CyclicVariableAnalyzer {
         String objectVar = state.popFromStack();
 
         SharingPairAnalyzer.setCurrentMethodCall(currentMethodCall);
-        Map<BytecodeInstruction, SharingState> methodInstructionStates1 = SharingAnalysisRunner
-                .getMethodInstructionStates(currentMethodCall);
-        SharingState sharingState = methodInstructionStates1.get(instruction);
+        SharingState sharingState = SharingAnalysisRunner
+                .getMethodInstructionStates(currentMethodCall).get(instruction);
 
         boolean valueIsCyclic = state.isPossiblyCyclic(valueVar);
         boolean objectAndValueShare = sharingState.mayShare(objectVar, valueVar);

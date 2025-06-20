@@ -6,8 +6,10 @@ import java.util.Map;
 import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.util.Constants;
+import fr.univreunion.bcterm.util.Logger;
 
 public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
+    private static final java.util.logging.Logger logger = Logger.getLogger(AliasingAnalysisRunner.class);
     private static final Map<String, Map<BytecodeInstruction, AliasingState>> methodInstructionStates = new HashMap<>();
     private static Map<BytecodeInstruction, AliasingState> currentInstructionState = new HashMap<>();
     private static final Map<String, Integer> methodCallCounters = new HashMap<>();
@@ -18,13 +20,13 @@ public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
         AliasPairAnalyzer.execute(instruction);
 
         if (currentInstructionState.containsKey(instruction)) {
-            System.out.println("Warning: Instruction already analyzed");
+            logger.warning(() -> "Warning: Instruction already analyzed");
             AliasingState oldState = currentInstructionState.get(instruction);
-            System.out.println("Before: " + oldState);
-            System.out.println("After: " + newState);
+            logger.info(() -> "Before: " + oldState);
+            logger.info(() -> "After: " + newState);
 
             AliasingState lub = computeLUB(oldState, newState);
-            System.out.println("LUB: " + lub);
+            logger.info(() -> "LUB: " + lub);
 
             if (lub.getAliasPairs().equals(oldState.getAliasPairs())) {
                 return false;

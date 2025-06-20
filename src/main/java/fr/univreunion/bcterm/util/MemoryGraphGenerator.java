@@ -25,6 +25,7 @@ import fr.univreunion.bcterm.jvm.state.Value;
  * the JVM state, sharing relationships, and aliases.
  */
 public class MemoryGraphGenerator {
+    private static final java.util.logging.Logger logger = Logger.getLogger(MemoryGraphGenerator.class);
 
     /**
      * Generates a memory graph visualization for a given JVM state at a specific
@@ -91,7 +92,7 @@ public class MemoryGraphGenerator {
             return true;
 
         } catch (IOException | NumberFormatException e) {
-            System.err.println("Error generating memory graph: " + e.getMessage());
+            logger.severe(() -> "Error generating memory graph: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -672,7 +673,7 @@ public class MemoryGraphGenerator {
             return true;
 
         } catch (IOException | NumberFormatException e) {
-            System.err.println("Error generating final memory graph: " + e.getMessage());
+            logger.severe(() -> "Error generating final memory graph: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -699,13 +700,13 @@ public class MemoryGraphGenerator {
         try {
             File baseDir = new File(baseDirectory);
             if (!baseDir.exists() || !baseDir.isDirectory()) {
-                System.err.println("Base directory doesles not exist: " + baseDirectory);
+                logger.severe(() -> "Base directory does not exist: " + baseDirectory);
                 return false;
             }
 
             return processDirectoryRecursively(baseDir, extension);
         } catch (Exception e) {
-            System.err.println("Error generating images from DOT files: " + e.getMessage());
+            logger.severe(() -> "Error generating images from DOT files: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -767,15 +768,15 @@ public class MemoryGraphGenerator {
             int exitCode = process.waitFor();
 
             if (exitCode == 0) {
-                System.out.println("Generated " + outputFile.getName() + " successfully in " + dotFile.getParent());
+                logger.info(() -> "Generated " + outputFile.getName() + " successfully in " + dotFile.getParent());
                 return true;
             } else {
-                System.err
-                        .println("Error generating image from " + dotFile.getName() + " (exit code: " + exitCode + ")");
+                logger.severe(
+                        () -> "Error generating image from " + dotFile.getName() + " (exit code: " + exitCode + ")");
                 return false;
             }
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error generating image from " + dotFile.getName() + ": " + e.getMessage());
+            logger.severe(() -> "Error generating image from " + dotFile.getName() + ": " + e.getMessage());
             return false;
         }
     }
