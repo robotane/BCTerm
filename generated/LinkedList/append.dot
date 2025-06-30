@@ -8,9 +8,9 @@ digraph append {
   append_block3 [label="ifne of type LinkedList    \lload 2                     \lgetfield next              \lstore 2                    \l"];
   append_block4 [label="ifeq of type LinkedList    \lload 2                     \lnew LinkedList             \ldup                        \lload 1                     \lconst null                 \l"];
   append_block5 [label="call LinkedList.<init>(int,LinkedList):void    \lputfield next                                  \l"];
+  append_block4 -> append_block5;
+  append_block1 -> append_block2;
+  append_block3 -> append_block2;
   append_block2 -> append_block4;
   append_block2 -> append_block3;
-  append_block4 -> append_block5;
-  append_block3 -> append_block2;
-  append_block1 -> append_block2;
 }

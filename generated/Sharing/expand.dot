@@ -8,9 +8,9 @@ digraph expand {
   expand_block3 [label="ifeq of type Sharing    \l"];
   expand_block4 [label="ifne of type Sharing    \lload 1                  \lnew Sharing             \ldup                     \lconst null              \l"];
   expand_block5 [label="call Sharing.<init>(Sharing):void    \lputfield next                        \lload 1                               \lgetfield next                        \lstore 1                              \lload 2                               \lgetfield next                        \lstore 2                              \l"];
-  expand_block4 -> expand_block5;
   expand_block2 -> expand_block4;
   expand_block2 -> expand_block3;
+  expand_block4 -> expand_block5;
   expand_block5 -> expand_block2;
   expand_block1 -> expand_block2;
 }

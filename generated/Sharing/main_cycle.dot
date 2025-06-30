@@ -1,0 +1,19 @@
+digraph main_cycle {
+  label="main_cycle";
+  node [shape=box];
+  node [shape=box fontname="monospace"];
+  edge [color=blue];
+  main_cycle_block1 [label="new Sharing    \ldup            \lnew Sharing    \ldup            \lnew Sharing    \ldup            \lconst null     \l"];
+  main_cycle_block2 [label="call Sharing.<init>(Sharing):void    \l"];
+  main_cycle_block3 [label="call Sharing.<init>(Sharing):void    \l"];
+  main_cycle_block4 [label="call Sharing.<init>(Sharing):void    \lstore 1                              \lnew Sharing                          \ldup                                  \lnew Sharing                          \ldup                                  \lconst null                           \l"];
+  main_cycle_block5 [label="call Sharing.<init>(Sharing):void    \l"];
+  main_cycle_block6 [label="call Sharing.<init>(Sharing):void    \lstore 2                              \lload 2                               \lgetfield next                        \lload 2                               \lputfield next                        \l"];
+  main_cycle_block7 [label="load 1                               \lload 2                               \lcall Sharing.expand(Sharing):void    \l"];
+  main_cycle_block4 -> main_cycle_block5;
+  main_cycle_block3 -> main_cycle_block4;
+  main_cycle_block2 -> main_cycle_block3;
+  main_cycle_block1 -> main_cycle_block2;
+  main_cycle_block6 -> main_cycle_block7;
+  main_cycle_block5 -> main_cycle_block6;
+}

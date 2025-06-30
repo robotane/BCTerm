@@ -1,0 +1,7 @@
+digraph _init_ {
+  label="<init>";
+  node [shape=box];
+  node [shape=box fontname="monospace"];
+  edge [color=blue];
+  _init__block1 [label="load 0           \lload 1           \lputfield next    \l"];
+}
