@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
+import fr.univreunion.bcterm.analysis.AbstractAnalysisEngine;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.instruction.CallInstruction;
 import fr.univreunion.bcterm.jvm.state.JVMState;
@@ -105,31 +105,31 @@ public class Method {
         this.program = program;
     }
 
-    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner analysisRunner) {
-        return execute(initialState, analysisRunner, null);
+    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisEngine analysisEngine) {
+        return execute(initialState, analysisEngine, null);
     }
 
-    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner analysisRunner,
+    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisEngine analysisEngine,
             String providedMethodCallId) {
-        if (analysisRunner != null) {
+        if (analysisEngine != null) {
             // Use provided methodCallId if available, otherwise generate one
             if (providedMethodCallId != null) {
                 this.methodCallId = providedMethodCallId;
-                analysisRunner.setCurrentMethodCall(this.methodCallId);
+                analysisEngine.setCurrentMethodCall(this.methodCallId);
             } else {
-                this.methodCallId = analysisRunner.generateMethodCallId(name);
-                analysisRunner.setCurrentMethodCall(this.methodCallId);
+                this.methodCallId = analysisEngine.generateMethodCallId(name);
+                analysisEngine.setCurrentMethodCall(this.methodCallId);
             }
         }
 
-        logger.info(() -> "\nExecuting method " + name + " with " + analysisRunner.getName());
+        logger.info(() -> "\nExecuting method " + name + " with " + analysisEngine.getName());
         logger.info("---------------------------------");
 
         BasicBlock startBlock = cfg.getBlocks().get(0);
         Set<JVMState> finalStates = new HashSet<>();
         Set<BasicBlock> visitedInPath = new HashSet<>();
 
-        executeRecursive(startBlock, initialState, finalStates, visitedInPath, analysisRunner);
+        executeRecursive(startBlock, initialState, finalStates, visitedInPath, analysisEngine);
 
         logger.info(() -> "\nMethod " + name + " execution completed");
         logger.info(() -> "Found " + finalStates.size() + " final states");
@@ -139,13 +139,13 @@ public class Method {
     }
 
     private void executeRecursive(BasicBlock currentBlock, JVMState currentState,
-            Set<JVMState> finalStates, Set<BasicBlock> visitedInPath, AbstractAnalysisRunner analysisRunner) {
+            Set<JVMState> finalStates, Set<BasicBlock> visitedInPath, AbstractAnalysisEngine analysisEngine) {
 
         visitedInPath.add(currentBlock);
 
         logger.fine(() -> "Executing block " + currentBlock.getId() + " in method " + name);
 
-        JVMState stateAfterBlock = executeBlock(currentBlock, currentState, analysisRunner);
+        JVMState stateAfterBlock = executeBlock(currentBlock, currentState, analysisEngine);
 
         if (stateAfterBlock == null) {
             logger.warning(() -> "Execution of block " + currentBlock.getId() + " failed in method " + name);
@@ -161,7 +161,7 @@ public class Method {
         } else {
             for (BasicBlock nextBlock : nextBlocks) {
                 executeRecursive(nextBlock, stateAfterBlock, finalStates,
-                        new HashSet<>(visitedInPath), analysisRunner);
+                        new HashSet<>(visitedInPath), analysisEngine);
             }
         }
 
@@ -169,7 +169,7 @@ public class Method {
         visitedInPath.remove(currentBlock);
     }
 
-    private JVMState executeBlock(BasicBlock block, JVMState state, AbstractAnalysisRunner analysisRunner) {
+    private JVMState executeBlock(BasicBlock block, JVMState state, AbstractAnalysisEngine analysisEngine) {
         if (block == null || state == null) {
             return null;
         }
@@ -184,13 +184,13 @@ public class Method {
         for (BytecodeInstruction instruction : instructions) {
             int localVarsCount = state.getLocalVariablesSize();
             int stackSize = state.getStackSize();
-            Object analyzeResult = analysisRunner.getCurrentAnalysisResults();
+            Object analyzeResult = analysisEngine.getCurrentAnalysisResults();
             JVMState oldState = state.deepCopy();
 
             String instructionLabel = instruction.getLabel();
 
             if (instruction instanceof CallInstruction) {
-                instruction.setAnalysisRunner(analysisRunner);
+                instruction.setAnalysisEngine(analysisEngine);
                 ((CallInstruction) instruction).pushMethodCallStack(methodCallId);
             }
 
@@ -198,12 +198,12 @@ public class Method {
 
             if (instruction instanceof CallInstruction) {
                 this.methodCallId = ((CallInstruction) instruction).popMethodCallStack();
-                analysisRunner.setCurrentMethodCall(methodCallId);
-                instruction.setAnalysisRunner(analysisRunner);
+                analysisEngine.setCurrentMethodCall(methodCallId);
+                instruction.setAnalysisEngine(analysisEngine);
             }
 
             if (executionSucceeded) {
-                analysisSucceeded = analysisRunner.analyze(instruction);
+                analysisSucceeded = analysisEngine.analyze(instruction);
                 if (!analysisSucceeded) {
                     logger.warning("  Analysis failed");
                 } else {
@@ -217,15 +217,15 @@ public class Method {
             if (!executionSucceeded || analysisSucceeded) {
                 instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT, localVarsCount);
                 instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_STACK_SIZE, stackSize);
-                analysisRunner.addAnalysisResultToInstruction(instruction, analyzeResult);
+                analysisEngine.addAnalysisResultToInstruction(instruction, analyzeResult);
 
                 if (Constants.ENABLE_FILE_GENERATION) {
-                    String analysisName = analysisRunner.getName().replaceAll("\\s+", "_").toLowerCase();
+                    String analysisName = analysisEngine.getName().replaceAll("\\s+", "_").toLowerCase();
                     String programName = program.getName();
                     String memoryGraphPath = programName + File.separator + analysisName + File.separator
                             + Constants.MEMORY_GRAPH_PREFIX + this.methodCallId;
 
-                    MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction,
+                    MemoryGraphGenerator.generateMemoryGraph(oldState, memoryGraphPath, instruction, analysisEngine,
                             Constants.MEMORY_GRAPH_SHOW_OBJECTS, Constants.MEMORY_GRAPH_SHOW_PRIMITIVES);
                 }
 

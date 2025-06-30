@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
+import fr.univreunion.bcterm.analysis.AbstractAnalysisEngine;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.util.Constants;
 import fr.univreunion.bcterm.util.Logger;
@@ -156,11 +156,11 @@ public class Program {
      * @throws IllegalArgumentException if the specified method does not exist in
      *                                  the program
      */
-    public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisRunner interpreter) {
+    public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisEngine interpreter) {
         return execute(methodName, initialState, interpreter, null);
     }
 
-    public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisRunner interpreter,
+    public Set<JVMState> execute(String methodName, JVMState initialState, AbstractAnalysisEngine interpreter,
             String methodCallId) {
         if (!methods.containsKey(methodName)) {
             throw new IllegalArgumentException("Method " + methodName + " does not exist in this program");
@@ -176,7 +176,7 @@ public class Program {
      * @param interpreter  The interpreter to use for analysis
      * @return The set of final JVM states after execution
      */
-    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisRunner interpreter) {
+    public Set<JVMState> execute(JVMState initialState, AbstractAnalysisEngine interpreter) {
         return execute(mainMethodName, initialState, interpreter, null);
     }
 

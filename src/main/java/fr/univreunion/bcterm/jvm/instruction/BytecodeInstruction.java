@@ -4,13 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
+import fr.univreunion.bcterm.analysis.AbstractAnalysisEngine;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
-import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
+import fr.univreunion.bcterm.analysis.aliasing.AliasingAbstractInterpreter;
 import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAbstractInterpreter;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
-import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
+import fr.univreunion.bcterm.analysis.sharing.SharingAbstractInterpreter;
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.util.Constants;
 
@@ -135,11 +135,11 @@ public abstract class BytecodeInstruction {
 
         switch (key) {
             case Constants.ANALYSIS_RESULT_SHARING_PAIRS:
-                return SharingPairAnalyzer.formatForLabel((Set<SharingPair>) value);
+                return SharingAbstractInterpreter.formatForLabel((Set<SharingPair>) value);
             case Constants.ANALYSIS_RESULT_CYCLIC_VARS:
-                return CyclicVariableAnalyzer.formatForLabel((Set<CyclicVariable>) value);
+                return CyclicityAbstractInterpreter.formatForLabel((Set<CyclicVariable>) value);
             case Constants.ANALYSIS_RESULT_ALIAS_PAIRS:
-                return AliasPairAnalyzer.formatForLabel((Set<AliasPair>) value);
+                return AliasingAbstractInterpreter.formatForLabel((Set<AliasPair>) value);
             case Constants.ANALYSIS_RESULT_LOCAL_VARS_AND_STACK:
                 StringBuilder builtLabel = new StringBuilder();
                 if (analysisResults.containsKey(Constants.ANALYSIS_RESULT_LOCAL_VARS_COUNT)) {
@@ -178,8 +178,8 @@ public abstract class BytecodeInstruction {
         analysisResults.clear();
     }
 
-    public void setAnalysisRunner(AbstractAnalysisRunner analysisRunner) {
+    public void setAnalysisEngine(AbstractAnalysisEngine analysisEngine) {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setAnalysisRunner'");
+        throw new UnsupportedOperationException("Unimplemented method 'setAnalysisEngine'");
     }
 }

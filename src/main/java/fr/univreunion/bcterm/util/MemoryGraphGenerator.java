@@ -10,9 +10,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import fr.univreunion.bcterm.analysis.AbstractAnalysisEngine;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
+import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisEngine;
+import fr.univreunion.bcterm.analysis.aliasing.AliasingState;
 import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariable;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisEngine;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityState;
+import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisEngine;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
+import fr.univreunion.bcterm.analysis.sharing.SharingState;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.jvm.state.IntegerValue;
 import fr.univreunion.bcterm.jvm.state.JVMObject;
@@ -41,7 +48,7 @@ public class MemoryGraphGenerator {
      * @return true if the memory graph was successfully generated, false otherwise
      */
     public static boolean generateMemoryGraph(JVMState state, String outputPath, BytecodeInstruction instruction,
-            boolean showAllObjects, boolean showAnalysis) {
+            AbstractAnalysisEngine analysisEngine, boolean showAllObjects, boolean showAnalysis) {
         try {
             Map<String, Set<Long>> pointsToGraph = buildPointsToGraph(state);
 
@@ -78,7 +85,7 @@ public class MemoryGraphGenerator {
             addEdgesBetweenObjects(dotContent, state, timestamp, addedObjectAddresses);
 
             if (showAnalysis) {
-                addAnalysisResults(instruction, dotContent, timestamp, false);
+                addAnalysisResults(instruction, analysisEngine, dotContent, timestamp, true);
             }
 
             dotContent.append(" }\n");
@@ -479,13 +486,23 @@ public class MemoryGraphGenerator {
         }
     }
 
-    private static void addAnalysisResults(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
-            boolean finalResult) {
-        String sharingNodeId = addSharingPairs(instruction, dotContent, timestamp, finalResult);
+    private static void addAnalysisResults(BytecodeInstruction instruction, AbstractAnalysisEngine analysisEngine,
+            StringBuilder dotContent, long timestamp, boolean finalResult) {
 
-        String aliasNodeId = addAliasPairs(instruction, dotContent, timestamp, finalResult);
+        // Get analysis results from the analysis runner's current instruction state
+        Object analysisState = null;
+        if (analysisEngine != null) {
+            Map<BytecodeInstruction, ?> currentInstructionState = analysisEngine.getCurrentInstructionState();
+            if (currentInstructionState != null) {
+                analysisState = currentInstructionState.get(instruction);
+            }
+        }
 
-        String cyclicNodeId = addCyclicVariables(instruction, dotContent, timestamp, finalResult);
+        String sharingNodeId = addSharingPairs(instruction, analysisEngine, dotContent, timestamp, finalResult);
+
+        String aliasNodeId = addAliasPairs(instruction, analysisEngine, dotContent, timestamp, finalResult);
+
+        String cyclicNodeId = addCyclicVariables(instruction, analysisEngine, dotContent, timestamp, finalResult);
 
         if (sharingNodeId != null && aliasNodeId != null) {
             dotContent.append(" // Invisible edge for horizontal alignment\n");
@@ -500,11 +517,30 @@ public class MemoryGraphGenerator {
         }
     }
 
-    private static String addSharingPairs(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
-            boolean finalResult) {
-        @SuppressWarnings("unchecked")
-        Set<SharingPair> sharingPairs = (Set<SharingPair>) instruction
-                .getAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS);
+    private static String addSharingPairs(BytecodeInstruction instruction, AbstractAnalysisEngine analysisEngine,
+            StringBuilder dotContent, long timestamp, boolean finalResult) {
+
+        Set<SharingPair> sharingPairs = null;
+
+        // Try to get from analysis runner first
+        if (analysisEngine instanceof SharingAnalysisEngine) {
+            Map<BytecodeInstruction, ?> currentInstructionState = analysisEngine.getCurrentInstructionState();
+            if (currentInstructionState != null) {
+                Object state = currentInstructionState.get(instruction);
+                if (state instanceof SharingState) {
+                    SharingState sharingState = (SharingState) state;
+                    sharingPairs = sharingState.getSharingPairs();
+                }
+            }
+        }
+
+        // Fallback to instruction analysis results
+        if (sharingPairs == null) {
+            @SuppressWarnings("unchecked")
+            Set<SharingPair> instructionSharingPairs = (Set<SharingPair>) instruction
+                    .getAnalysisResult(Constants.ANALYSIS_RESULT_SHARING_PAIRS);
+            sharingPairs = instructionSharingPairs;
+        }
 
         dotContent.append("\n // Sharing pairs\n");
         dotContent.append(" subgraph cluster_sharing_").append(timestamp).append(" {\n");
@@ -530,11 +566,30 @@ public class MemoryGraphGenerator {
         return sharingNodeId;
     }
 
-    private static String addAliasPairs(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
-            boolean finalResult) {
-        @SuppressWarnings("unchecked")
-        Set<AliasPair> aliasPairs = (Set<AliasPair>) instruction
-                .getAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS);
+    private static String addAliasPairs(BytecodeInstruction instruction, AbstractAnalysisEngine analysisEngine,
+            StringBuilder dotContent, long timestamp, boolean finalResult) {
+
+        Set<AliasPair> aliasPairs = null;
+
+        // Try to get from analysis runner first
+        if (analysisEngine instanceof AliasingAnalysisEngine) {
+            Map<BytecodeInstruction, ?> currentInstructionState = analysisEngine.getCurrentInstructionState();
+            if (currentInstructionState != null) {
+                Object state = currentInstructionState.get(instruction);
+                if (state instanceof AliasingState) {
+                    AliasingState aliasingState = (AliasingState) state;
+                    aliasPairs = aliasingState.getAliasPairs();
+                }
+            }
+        }
+
+        // Fallback to instruction analysis results
+        if (aliasPairs == null) {
+            @SuppressWarnings("unchecked")
+            Set<AliasPair> instructionAliasPairs = (Set<AliasPair>) instruction
+                    .getAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS);
+            aliasPairs = instructionAliasPairs;
+        }
 
         dotContent.append("\n    // Alias pairs\n");
         dotContent.append("    subgraph cluster_aliases_").append(timestamp).append(" {\n");
@@ -561,11 +616,30 @@ public class MemoryGraphGenerator {
         return aliasNodeId;
     }
 
-    private static String addCyclicVariables(BytecodeInstruction instruction, StringBuilder dotContent, long timestamp,
-            boolean finalResult) {
-        @SuppressWarnings("unchecked")
-        Set<CyclicVariable> cyclicVars = (Set<CyclicVariable>) instruction
-                .getAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS);
+    private static String addCyclicVariables(BytecodeInstruction instruction, AbstractAnalysisEngine analysisEngine,
+            StringBuilder dotContent, long timestamp, boolean finalResult) {
+
+        Set<CyclicVariable> cyclicVars = null;
+
+        // Try to get from analysis runner first
+        if (analysisEngine instanceof CyclicityAnalysisEngine) {
+            Map<BytecodeInstruction, ?> currentInstructionState = analysisEngine.getCurrentInstructionState();
+            if (currentInstructionState != null) {
+                Object state = currentInstructionState.get(instruction);
+                if (state instanceof CyclicityState) {
+                    CyclicityState cyclicityState = (CyclicityState) state;
+                    cyclicVars = cyclicityState.getPossiblyCyclicVariables();
+                }
+            }
+        }
+
+        // Fallback to instruction analysis results
+        if (cyclicVars == null) {
+            @SuppressWarnings("unchecked")
+            Set<CyclicVariable> instructionCyclicVars = (Set<CyclicVariable>) instruction
+                    .getAnalysisResult(Constants.ANALYSIS_RESULT_CYCLIC_VARS);
+            cyclicVars = instructionCyclicVars;
+        }
 
         dotContent.append("\n // Cyclic variables\n");
         dotContent.append(" subgraph cluster_cyclic_").append(timestamp).append(" {\n");
@@ -613,11 +687,11 @@ public class MemoryGraphGenerator {
 
     public static boolean generateMemoryGraph(JVMState state, String outputPath, BytecodeInstruction instruction,
             boolean showAllObjects) {
-        return generateMemoryGraph(state, outputPath, instruction, showAllObjects, false);
+        return generateMemoryGraph(state, outputPath, instruction, null, showAllObjects, false);
     }
 
     public static boolean generateMemoryGraph(JVMState state, String outputPath, BytecodeInstruction instruction) {
-        return generateMemoryGraph(state, outputPath, instruction, true, false);
+        return generateMemoryGraph(state, outputPath, instruction, null, true, false);
     }
 
     public static boolean generateFinalMemoryGraph(JVMState state, String outputPath,
@@ -659,7 +733,7 @@ public class MemoryGraphGenerator {
             addEdgesBetweenObjects(dotContent, state, timestamp, addedObjectAddresses);
 
             if (showAnalysis) {
-                addAnalysisResults(null, dotContent, timestamp, true);
+                addAnalysisResults(null, null, dotContent, timestamp, true);
             }
 
             dotContent.append(" }\n");

@@ -7,15 +7,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
-import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
+import fr.univreunion.bcterm.analysis.AbstractAnalysisEngine;
 import fr.univreunion.bcterm.analysis.aliasing.AliasPair;
-import fr.univreunion.bcterm.analysis.aliasing.AliasPairAnalyzer;
-import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisRunner;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicVariableAnalyzer;
-import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisRunner;
-import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisRunner;
+import fr.univreunion.bcterm.analysis.aliasing.AliasingAnalysisEngine;
+import fr.univreunion.bcterm.analysis.cyclicity.CyclicityAnalysisEngine;
+import fr.univreunion.bcterm.analysis.sharing.SharingAnalysisEngine;
 import fr.univreunion.bcterm.analysis.sharing.SharingPair;
-import fr.univreunion.bcterm.analysis.sharing.SharingPairAnalyzer;
+import fr.univreunion.bcterm.analysis.sharing.SharingState;
+
 import fr.univreunion.bcterm.jvm.state.JVMState;
 import fr.univreunion.bcterm.jvm.state.Value;
 import fr.univreunion.bcterm.program.Method;
@@ -48,7 +47,7 @@ public class CallInstruction extends BytecodeInstruction {
     private String signature;
     private List<String> implementationClasses; // Remplace className
     private Program program;
-    private AbstractAnalysisRunner analysisRunner;
+    private AbstractAnalysisEngine analysisEngine;
     private Stack<String> methodCallStack = new Stack<>();
 
     /**
@@ -138,8 +137,8 @@ public class CallInstruction extends BytecodeInstruction {
     }
 
     @Override
-    public void setAnalysisRunner(AbstractAnalysisRunner analysisRunner) {
-        this.analysisRunner = analysisRunner;
+    public void setAnalysisEngine(AbstractAnalysisEngine analysisEngine) {
+        this.analysisEngine = analysisEngine;
     }
 
     @Override
@@ -195,26 +194,28 @@ public class CallInstruction extends BytecodeInstruction {
         // Propagate analysis relationships from stack variables to local variables
         List<Object> propagatedResults = propagateAnalysisRelationships(paramCount, initialStackSize);
         String methodCallId = null;
-        if (analysisRunner != null) {
-            methodCallId = analysisRunner.generateMethodCallId(this.methodName);
-            analysisRunner.setCurrentMethodCall(methodCallId);
+        if (analysisEngine != null) {
+            methodCallId = analysisEngine.generateMethodCallId(this.methodName);
+            analysisEngine.setCurrentMethodCall(methodCallId);
             if (!propagatedResults.isEmpty()) {
                 for (Object result : propagatedResults) {
-                    if (result instanceof AliasPair && analysisRunner instanceof AliasingAnalysisRunner) {
+                    if (result instanceof AliasPair && analysisEngine instanceof AliasingAnalysisEngine) {
                         AliasPair pair = (AliasPair) result;
-                        AliasPairAnalyzer.getCurrentState().addAliasPair(pair.getVar1(), pair.getVar2());
-                    } else if (result instanceof SharingPair && analysisRunner instanceof SharingAnalysisRunner) {
+                        ((AliasingAnalysisEngine) analysisEngine).getCurrentState().addAliasPair(pair.getVar1(),
+                                pair.getVar2());
+                    } else if (result instanceof SharingPair && analysisEngine instanceof SharingAnalysisEngine) {
                         SharingPair pair = (SharingPair) result;
-                        SharingPairAnalyzer.getCurrentState().addSharingPair(pair.getVar1(), pair.getVar2());
-                    } else if (result instanceof String && analysisRunner instanceof CyclicityAnalysisRunner) {
+                        ((SharingState) analysisEngine.getCurrentState()).addSharingPair(pair.getVar1(),
+                                pair.getVar2());
+                    } else if (result instanceof String && analysisEngine instanceof CyclicityAnalysisEngine) {
                         String nonCyclicVar = (String) result;
-                        CyclicVariableAnalyzer.getCurrentState().addPossiblyCyclic(nonCyclicVar);
+                        ((CyclicityAnalysisEngine) analysisEngine).getCurrentState().addPossiblyCyclic(nonCyclicVar);
                     }
                 }
             }
         }
 
-        Set<JVMState> finalStates = program.execute(this.methodName, methodState, analysisRunner, methodCallId);
+        Set<JVMState> finalStates = program.execute(this.methodName, methodState, analysisEngine, methodCallId);
 
         if (finalStates != null && !finalStates.isEmpty()) {
             JVMState finalState = finalStates.iterator().next();
@@ -329,36 +330,35 @@ public class CallInstruction extends BytecodeInstruction {
     private List<Object> propagateAnalysisRelationships(int paramCount, int initialStackSize) {
         List<Object> propagatedResults = new ArrayList<>();
 
-        if (analysisRunner == null) {
+        if (analysisEngine == null) {
             return propagatedResults;
         }
 
-        Object analysisResults = analysisRunner.getCurrentAnalysisResults();
+        Object analysisResults = analysisEngine.getCurrentAnalysisResults();
         if (analysisResults == null) {
             return propagatedResults;
         }
 
-        // Check relationships between all pairs of stack parameters
         for (int i = 0; i <= paramCount; i++) {
 
-            if (analysisRunner instanceof CyclicityAnalysisRunner) {
-                int stackPos1 = initialStackSize - i;
+            if (analysisEngine instanceof CyclicityAnalysisEngine) {
+                int stackPos1 = initialStackSize - i - 1;
                 String stackVar1 = "s" + stackPos1;
-                String localVar1 = "l" + i;
-                // For non-cyclicity, we propagate cyclic properties
-                if (CyclicVariableAnalyzer.getCurrentState().isPossiblyCyclic(stackVar1)) {
+                String localVar1 = "l" + (paramCount - i);
+
+                if (((CyclicityAnalysisEngine) analysisEngine).getCurrentState().isPossiblyCyclic(stackVar1)) {
                     propagatedResults.add(localVar1);
                 }
                 continue;
             }
             for (int j = i + 1; j <= paramCount; j++) {
-                int stackPos1 = initialStackSize - i;
-                int stackPos2 = initialStackSize - j;
+                int stackPos1 = initialStackSize - i - 1;
+                int stackPos2 = initialStackSize - j - 1;
                 String stackVar1 = "s" + stackPos1;
                 String stackVar2 = "s" + stackPos2;
-                String localVar1 = "l" + i;
-                String localVar2 = "l" + j;
-                // Check if stack variables are related and create local relationship if so
+                String localVar1 = "l" + (paramCount - i);
+                String localVar2 = "l" + (paramCount - j);
+
                 Object localRelationship = createRelationshipIfExists(stackVar1, stackVar2, localVar1, localVar2);
                 if (localRelationship != null) {
                     propagatedResults.add(localRelationship);
@@ -377,24 +377,23 @@ public class CallInstruction extends BytecodeInstruction {
      *         otherwise
      */
     private Object createRelationshipIfExists(String stackVar1, String stackVar2, String localVar1, String localVar2) {
-        if (analysisRunner instanceof AliasingAnalysisRunner) {
-            if (AliasPairAnalyzer.getCurrentState().areAliases(stackVar1, stackVar2)) {
+        if (analysisEngine instanceof AliasingAnalysisEngine) {
+            if (((AliasingAnalysisEngine) analysisEngine).getCurrentState().areAliases(stackVar1, stackVar2)) {
                 return new AliasPair(localVar1, localVar2);
             }
-        } else if (analysisRunner instanceof SharingAnalysisRunner) {
-            if (SharingPairAnalyzer.getCurrentState().mayShare(stackVar1, stackVar2)) {
+        } else if (analysisEngine instanceof SharingAnalysisEngine) {
+            if (((SharingState) analysisEngine.getCurrentState()).mayShare(stackVar1, stackVar2)) {
                 return new SharingPair(localVar1, localVar2);
             }
         }
         return null;
     }
 
-    public void pushMethodCallStack(String calleddId) {
-        methodCallStack.push(calleddId);
+    public void pushMethodCallStack(String calledId) {
+        methodCallStack.push(calledId);
     }
 
     public String popMethodCallStack() {
         return methodCallStack.pop();
     }
-
 }

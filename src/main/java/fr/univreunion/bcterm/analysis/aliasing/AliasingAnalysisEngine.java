@@ -1,23 +1,29 @@
 package fr.univreunion.bcterm.analysis.aliasing;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
-import fr.univreunion.bcterm.analysis.AbstractAnalysisRunner;
+import fr.univreunion.bcterm.analysis.AbstractAnalysisEngine;
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 import fr.univreunion.bcterm.util.Constants;
 import fr.univreunion.bcterm.util.Logger;
 
-public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
-    private static final java.util.logging.Logger logger = Logger.getLogger(AliasingAnalysisRunner.class);
+public class AliasingAnalysisEngine implements AbstractAnalysisEngine {
+    private static final java.util.logging.Logger logger = Logger.getLogger(AliasingAnalysisEngine.class);
     private static final Map<String, Map<BytecodeInstruction, AliasingState>> methodInstructionStates = new HashMap<>();
-    private static Map<BytecodeInstruction, AliasingState> currentInstructionState = new HashMap<>();
+    private static final Map<String, AliasingState> methodStates = new HashMap<>();
     private static final Map<String, Integer> methodCallCounters = new HashMap<>();
+
+    private String currentMethodCall = null;
+    private AliasingState currentState = null;
+    private static Map<BytecodeInstruction, AliasingState> currentInstructionState = new HashMap<>();
 
     @Override
     public boolean analyze(BytecodeInstruction instruction) {
-        AliasingState newState = AliasPairAnalyzer.getCurrentState().deepCopy();
-        AliasPairAnalyzer.execute(instruction);
+        AliasingState newState = getCurrentState().copy();
+        AliasingAbstractInterpreter.execute(instruction, currentState, currentMethodCall);
 
         if (currentInstructionState.containsKey(instruction)) {
             logger.warning(() -> "Warning: Instruction already analyzed");
@@ -32,22 +38,50 @@ public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
                 return false;
             }
         }
+
         currentInstructionState.put(instruction, newState);
         return true;
     }
 
     @Override
     public void setCurrentMethodCall(String methodCallId) {
-        AliasPairAnalyzer.setCurrentMethodCall(methodCallId);
+        this.currentMethodCall = methodCallId;
         methodInstructionStates.putIfAbsent(methodCallId, new HashMap<>());
-        AliasingAnalysisRunner.currentInstructionState = methodInstructionStates.get(methodCallId);
+        methodStates.putIfAbsent(methodCallId, new AliasingState());
+        AliasingAnalysisEngine.currentInstructionState = methodInstructionStates.get(methodCallId);
+
+        currentState = methodStates.get(methodCallId);
+    }
+
+    public String getCurrentMethodCall() {
+        return currentMethodCall;
+    }
+
+    @Override
+    public AliasingState getCurrentState() {
+        if (currentState == null) {
+            return new AliasingState();
+        }
+        return currentState;
+    }
+
+    public Set<AliasPair> getDefiniteAliases() {
+        return new HashSet<>(getCurrentState().getAliasPairs());
+    }
+
+    public void resetAll() {
+        methodStates.clear();
+        currentMethodCall = null;
+        currentState = null;
     }
 
     @Override
     public void reset() {
         methodInstructionStates.clear();
+        methodStates.clear();
         currentInstructionState = null;
-        AliasPairAnalyzer.resetAll();
+        currentMethodCall = null;
+        currentState = null;
     }
 
     @Override
@@ -61,7 +95,7 @@ public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
 
     @Override
     public Object getCurrentAnalysisResults() {
-        return AliasPairAnalyzer.getDefiniteAliases();
+        return getDefiniteAliases();
     }
 
     @Override
@@ -79,5 +113,10 @@ public class AliasingAnalysisRunner implements AbstractAnalysisRunner {
     @Override
     public void addAnalysisResultToInstruction(BytecodeInstruction instruction, Object result) {
         instruction.addAnalysisResult(Constants.ANALYSIS_RESULT_ALIAS_PAIRS, result);
+    }
+
+    @Override
+    public Map<BytecodeInstruction, AliasingState> getCurrentInstructionState() {
+        return currentInstructionState;
     }
 }

@@ -1,8 +1,5 @@
 package fr.univreunion.bcterm.analysis.sharing;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import fr.univreunion.bcterm.jvm.instruction.AddInstruction;
@@ -17,7 +14,6 @@ import fr.univreunion.bcterm.jvm.instruction.LoadInstruction;
 import fr.univreunion.bcterm.jvm.instruction.NewInstruction;
 import fr.univreunion.bcterm.jvm.instruction.PutFieldInstruction;
 import fr.univreunion.bcterm.jvm.instruction.StoreInstruction;
-import fr.univreunion.bcterm.util.Logger;
 
 /**
  * Analyzer for tracking and managing sharing relationships between variables
@@ -45,38 +41,7 @@ import fr.univreunion.bcterm.util.Logger;
  * compositional
  * abstract semantics for static analysis.
  */
-public class SharingPairAnalyzer {
-    private static final java.util.logging.Logger logger = Logger.getLogger(SharingPairAnalyzer.class);
-    private static final Map<String, SharingState> methodStates = new HashMap<>();
-    private static String currentMethodCall = null;
-    private static SharingState currentState = null;
-
-    public static void setCurrentMethodCall(String methodCallId) {
-        currentMethodCall = methodCallId;
-        methodStates.putIfAbsent(methodCallId, new SharingState());
-        currentState = methodStates.get(methodCallId);
-    }
-
-    public static String getCurrentMethodCall() {
-        return currentMethodCall;
-    }
-
-    public static void resetAll() {
-        methodStates.clear();
-        currentMethodCall = null;
-        currentState = null;
-    }
-
-    public static SharingState getCurrentState() {
-        if (currentState == null) {
-            return new SharingState();
-        }
-        return currentState;
-    }
-
-    public static Set<SharingPair> getSharingPairs() {
-        return new HashSet<>(getCurrentState().getSharingPairs());
-    }
+public class SharingAbstractInterpreter {
 
     public static String formatForLabel(Set<SharingPair> sharingPairs) {
         StringBuilder sb = new StringBuilder();
@@ -93,15 +58,15 @@ public class SharingPairAnalyzer {
         return sb.toString();
     }
 
-    public static SharingState execute(BytecodeInstruction instruction, SharingState state) {
+    public static SharingState execute(BytecodeInstruction instruction, SharingState state, String currentMethodCall) {
         if (instruction instanceof LoadInstruction) {
             handleLoadInstruction((LoadInstruction) instruction, state);
         } else if (instruction instanceof StoreInstruction) {
-            handleStoreInstruction((StoreInstruction) instruction, state);
+            handleStoreInstruction((StoreInstruction) instruction, state, currentMethodCall);
         } else if (instruction instanceof GetFieldInstruction) {
             handleGetFieldInstruction((GetFieldInstruction) instruction, state);
         } else if (instruction instanceof PutFieldInstruction) {
-            handlePutFieldInstruction((PutFieldInstruction) instruction, state);
+            handlePutFieldInstruction((PutFieldInstruction) instruction, state, currentMethodCall);
         } else if (instruction instanceof NewInstruction) {
             handleNewInstruction((NewInstruction) instruction, state);
         } else if (instruction instanceof ConstInstruction) {
@@ -109,7 +74,7 @@ public class SharingPairAnalyzer {
         } else if (instruction instanceof CallInstruction) {
             handleCallInstruction((CallInstruction) instruction, state);
         } else if (instruction instanceof DupInstruction) {
-            handleDupInstruction((DupInstruction) instruction, state);
+            handleDupInstruction((DupInstruction) instruction, state, currentMethodCall);
         } else if (instruction instanceof AddInstruction) {
             handleAddInstruction((AddInstruction) instruction, state);
         } else if (instruction instanceof IfEqOfTypeInstruction) {
@@ -119,17 +84,6 @@ public class SharingPairAnalyzer {
         }
 
         return state;
-    }
-
-    public static void execute(BytecodeInstruction instruction) {
-        if (currentMethodCall == null) {
-            logger.warning(() -> "Warning: No current method set for sharing analysis");
-            return;
-        }
-
-        SharingState state = methodStates.get(currentMethodCall);
-
-        execute(instruction, state);
     }
 
     private static void handleLoadInstruction(LoadInstruction instruction, SharingState state) {
@@ -142,15 +96,17 @@ public class SharingPairAnalyzer {
         state.computeTransitiveClosure();
     }
 
-    private static void handleStoreInstruction(StoreInstruction instruction, SharingState state) {
+    private static void handleStoreInstruction(StoreInstruction instruction, SharingState state,
+            String currentMethodCall) {
         int localIndex = instruction.getIndex();
         String localVar = "l" + localIndex;
         String stackVar = state.popFromStack();
 
         state.removeSharingPairsFor(localVar);
-        state.addSharingPair(localVar, stackVar);
 
+        state.addSharingPair(localVar, stackVar);
         state.computeTransitiveClosure();
+
         state.removeSharingPairsFor(stackVar);
     }
 
@@ -164,7 +120,8 @@ public class SharingPairAnalyzer {
         state.computeTransitiveClosure();
     }
 
-    private static void handlePutFieldInstruction(PutFieldInstruction instruction, SharingState state) {
+    private static void handlePutFieldInstruction(PutFieldInstruction instruction, SharingState state,
+            String currentMethodCall) {
         String valueVar = state.popFromStack();
         String objectVar = state.popFromStack();
 
@@ -198,12 +155,10 @@ public class SharingPairAnalyzer {
         }
     }
 
-    private static void handleDupInstruction(DupInstruction instruction, SharingState state) {
+    private static void handleDupInstruction(DupInstruction instruction, SharingState state, String currentMethodCall) {
         String topVar = state.peekStack();
         String newStackVar = "s" + state.getStackSize();
-
         state.pushToStack(newStackVar);
-
         state.addSharingPair(topVar, newStackVar);
         state.computeTransitiveClosure();
     }

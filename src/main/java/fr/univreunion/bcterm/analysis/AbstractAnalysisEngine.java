@@ -1,8 +1,10 @@
 package fr.univreunion.bcterm.analysis;
 
+import java.util.Map;
+
 import fr.univreunion.bcterm.jvm.instruction.BytecodeInstruction;
 
-public interface AbstractAnalysisRunner {
+public interface AbstractAnalysisEngine {
     /**
      * Sets the current method call context
      * 
@@ -46,7 +48,11 @@ public interface AbstractAnalysisRunner {
      */
     String generateMethodCallId(String methodName);
 
-    public void addAnalysisResultToInstruction(BytecodeInstruction instruction, Object result);
+    void addAnalysisResultToInstruction(BytecodeInstruction instruction, Object result);
 
-    public Object getMethodInstructionStates();
+    Object getMethodInstructionStates();
+
+    Map<BytecodeInstruction, ?> getCurrentInstructionState();
+
+    Object getCurrentState();
 }
